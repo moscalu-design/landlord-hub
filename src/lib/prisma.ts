@@ -5,10 +5,8 @@ function createPrismaClient() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
 
-  // Ensure libSQL file:// URL format
-  const libsqlUrl = url.startsWith("file:") ? url : `file:${url}`;
-
-  const adapter = new PrismaLibSql({ url: libsqlUrl });
+  const authToken = process.env.DATABASE_AUTH_TOKEN;
+  const adapter = new PrismaLibSql({ url, authToken });
   return new PrismaClient({ adapter } as any);
 }
 

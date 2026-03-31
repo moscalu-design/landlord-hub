@@ -15,6 +15,11 @@
     "test:e2e:prod": "PLAYWRIGHT_BASE_URL=https://rentalapp-phi.vercel.app playwright test",
     "test:e2e:smoke": "playwright test e2e/smoke.spec.ts",
     "test:e2e:room-navigation": "playwright test e2e/room-navigation.spec.ts",
+    "test:e2e:auth-redirect": "playwright test e2e/auth-redirect.spec.ts",
+    "test:e2e:payment-flow": "playwright test e2e/payment-flow.spec.ts",
+    "test:e2e:room-edit": "playwright test e2e/room-edit.spec.ts",
+    "test:e2e:assign-tenant": "playwright test e2e/assign-tenant.spec.ts",
+    "test:e2e:property-form": "playwright test e2e/property-form.spec.ts",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:studio": "npx prisma studio"
   },

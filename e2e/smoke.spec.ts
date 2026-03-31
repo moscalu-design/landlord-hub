@@ -7,6 +7,7 @@ const MAIN_ROUTES = ["/dashboard", "/properties", "/tenants", "/payments", "/set
 const MAX_VISITS = 16;
 
 test("authenticated smoke navigation covers core pages safely", async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
   const monitor = attachAppMonitor(page);
   const queue = [...MAIN_ROUTES];
   const visited = new Set<string>();

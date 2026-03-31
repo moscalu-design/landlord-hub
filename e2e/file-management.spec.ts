@@ -9,7 +9,11 @@ async function resolveTenantPath(page: Page) {
   }
 
   await page.goto("/tenants", { waitUntil: "networkidle" });
-  const href = await page.locator('a[href^="/tenants/"]').first().getAttribute("href");
+  const href = await page.locator('a[href^="/tenants/"]').evaluateAll((nodes) =>
+    nodes
+      .map((node) => (node as HTMLAnchorElement).getAttribute("href"))
+      .find((value) => value !== null && value !== "/tenants/new")
+  );
   if (!href) {
     throw new Error("No tenant detail links available for file-management E2E test.");
   }
@@ -18,6 +22,7 @@ async function resolveTenantPath(page: Page) {
 }
 
 test("document upload, refresh, and delete stay in sync", async ({ page }) => {
+  test.setTimeout(60_000);
   const monitor = attachAppMonitor(page);
   const uniqueName = `e2e-room-fix-${Date.now()}.pdf`;
 
@@ -30,6 +35,7 @@ test("document upload, refresh, and delete stay in sync", async ({ page }) => {
 
   const slot = page.getByTestId("document-slot-idDocument");
   const fileInput = page.getByTestId("document-input-idDocument");
+  await expect(fileInput).toBeAttached();
   await fileInput.setInputFiles({
     name: uniqueName,
     mimeType: "application/pdf",

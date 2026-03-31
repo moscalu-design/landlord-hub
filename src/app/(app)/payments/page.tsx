@@ -90,7 +90,6 @@ export default async function PaymentsPage({
             <select
               name="year"
               defaultValue={year}
-              onChange={(e) => {}}
               className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {monthOptions.map(({ year: y, month: m }) => (

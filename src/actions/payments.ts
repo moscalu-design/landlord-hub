@@ -65,11 +65,14 @@ export async function recordPayment(paymentId: string, formData: FormData) {
 
 export async function waivePayment(paymentId: string) {
   await requireAuth();
-  await prisma.payment.update({
+  const payment = await prisma.payment.update({
     where: { id: paymentId },
     data: { status: "WAIVED" },
+    include: { occupancy: true },
   });
   revalidatePath("/payments");
+  revalidatePath(`/rooms/${payment.occupancy.roomId}`);
+  revalidatePath(`/tenants/${payment.occupancy.tenantId}`);
 }
 
 export async function recordDepositTransaction(occupancyId: string, formData: FormData) {

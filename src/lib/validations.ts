@@ -51,19 +51,24 @@ export type TenantInput = z.infer<typeof TenantSchema>;
 
 // ─── Occupancy ────────────────────────────────────────────────────────────────
 
-export const OccupancySchema = z.object({
-  roomId: z.string().min(1, "Room is required"),
-  tenantId: z.string().min(1, "Tenant is required"),
-  leaseStart: z.string().min(1, "Lease start date is required"),
-  leaseEnd: z.string().optional().or(z.literal("")),
-  moveInDate: z.string().optional().or(z.literal("")),
-  moveOutDate: z.string().optional().or(z.literal("")),
-  monthlyRent: z.coerce.number().min(0, "Rent must be 0 or more"),
-  depositRequired: z.coerce.number().min(0, "Deposit must be 0 or more"),
-  rentDueDay: z.coerce.number().min(1).max(28).default(1),
-  status: z.enum(["ACTIVE", "ENDED", "PENDING"]).default("ACTIVE"),
-  notes: z.string().max(2000).optional().or(z.literal("")),
-});
+export const OccupancySchema = z
+  .object({
+    roomId: z.string().min(1, "Room is required"),
+    tenantId: z.string().min(1, "Tenant is required"),
+    leaseStart: z.string().min(1, "Lease start date is required"),
+    leaseEnd: z.string().optional().or(z.literal("")),
+    moveInDate: z.string().optional().or(z.literal("")),
+    moveOutDate: z.string().optional().or(z.literal("")),
+    monthlyRent: z.coerce.number().min(0, "Rent must be 0 or more"),
+    depositRequired: z.coerce.number().min(0, "Deposit must be 0 or more"),
+    rentDueDay: z.coerce.number().min(1).max(28).default(1),
+    status: z.enum(["ACTIVE", "ENDED", "PENDING"]).default("ACTIVE"),
+    notes: z.string().max(2000).optional().or(z.literal("")),
+  })
+  .refine(
+    (d) => !d.leaseEnd || new Date(d.leaseEnd) > new Date(d.leaseStart),
+    { message: "Lease end must be after lease start", path: ["leaseEnd"] }
+  );
 
 export type OccupancyInput = z.infer<typeof OccupancySchema>;
 

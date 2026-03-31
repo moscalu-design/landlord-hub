@@ -5,7 +5,6 @@ interface StatCardProps {
   value: string | number;
   sub?: string;
   icon?: React.ReactNode;
-  trend?: "up" | "down" | "neutral";
   className?: string;
 }
 

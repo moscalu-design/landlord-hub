@@ -29,6 +29,14 @@ export async function createOccupancy(formData: FormData) {
     notes: formData.get("notes") || undefined,
   });
 
+  // Prevent assigning to an already-occupied room or a tenant with an active lease
+  const [occupiedRoom, activeTenantLease] = await Promise.all([
+    prisma.occupancy.findFirst({ where: { roomId: validated.roomId, status: "ACTIVE" } }),
+    prisma.occupancy.findFirst({ where: { tenantId: validated.tenantId, status: "ACTIVE" } }),
+  ]);
+  if (occupiedRoom) throw new Error("This room already has an active tenant.");
+  if (activeTenantLease) throw new Error("This tenant already has an active lease.");
+
   const occupancy = await prisma.occupancy.create({
     data: {
       roomId: validated.roomId,

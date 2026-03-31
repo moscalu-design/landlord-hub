@@ -98,13 +98,3 @@ export const DEPOSIT_STATUS_COLORS: Record<DepositStatus, string> = {
   DEDUCTED: "bg-red-100 text-red-800",
 };
 
-// ─── Month utility ─────────────────────────────────────────────────────────────
-
-export const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
-export function formatMonthYear(year: number, month: number): string {
-  return `${MONTH_NAMES[month - 1]} ${year}`;
-}

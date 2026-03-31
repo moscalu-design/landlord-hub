@@ -132,6 +132,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({
+      id: document.id,
       documentId: document.id,
       fileName: document.fileName,
       fileSize: document.fileSize,

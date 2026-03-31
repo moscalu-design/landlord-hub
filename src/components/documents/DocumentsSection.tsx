@@ -2,13 +2,7 @@
 
 import { useState } from "react";
 import { DocumentSlot } from "./DocumentSlot";
-
-interface DocumentRecord {
-  id: string;
-  fileName: string;
-  fileSize: number;
-  uploadedAt: Date | string;
-}
+import type { DocumentRecord } from "./documentRecord";
 
 type DocType = "idDocument" | "workContract" | "salarySlip";
 

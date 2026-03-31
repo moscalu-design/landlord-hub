@@ -2,13 +2,7 @@
 
 import { useRef, useState, useCallback } from "react";
 import { deleteDocument } from "@/actions/documents";
-
-interface DocumentRecord {
-  id: string;
-  fileName: string;
-  fileSize: number;
-  uploadedAt: Date | string;
-}
+import { normalizeUploadedDocument, type DocumentRecord } from "./documentRecord";
 
 interface DocumentSlotProps {
   tenantId: string;
@@ -94,7 +88,7 @@ export function DocumentSlot({
         return;
       }
 
-      onUploaded(data);
+      onUploaded(normalizeUploadedDocument(data));
     } catch {
       setError("Upload failed. Check your connection and try again.");
     } finally {

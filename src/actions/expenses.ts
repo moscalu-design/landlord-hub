@@ -12,10 +12,30 @@ async function requireAuth() {
   return session.user;
 }
 
+const CATEGORY_LABELS: Record<string, string> = {
+  ELECTRICITY: "Electricity", GAS: "Gas", WATER: "Water", HEATING: "Heating",
+  INTERNET: "Internet", INSURANCE: "Insurance", MAINTENANCE: "Maintenance",
+  REPAIRS: "Repairs", CLEANING: "Cleaning", TAXES: "Taxes", OTHER: "Other",
+};
+
 function parseExpenseFormData(formData: FormData) {
+  const category = String(formData.get("category") ?? "OTHER");
+  const paymentDate = String(formData.get("paymentDate") ?? "");
+  const rawTitle = String(formData.get("title") ?? "").trim();
+  const autoTitle = rawTitle || (() => {
+    const label = CATEGORY_LABELS[category] ?? "Expense";
+    if (paymentDate) {
+      const d = new Date(paymentDate);
+      if (!isNaN(d.getTime())) {
+        return `${label} · ${d.toLocaleDateString("en-GB", { month: "short", year: "numeric" })}`;
+      }
+    }
+    return label;
+  })();
+
   return PropertyExpenseSchema.parse({
-    title: formData.get("title"),
-    category: formData.get("category"),
+    title: autoTitle,
+    category,
     amount: formData.get("amount"),
     paymentDate: formData.get("paymentDate"),
     reportingYear: formData.get("reportingYear"),
@@ -38,7 +58,7 @@ export async function createExpense(
   const expense = await prisma.propertyExpense.create({
     data: {
       propertyId,
-      title: validated.title,
+      title: validated.title ?? "Expense",
       category: validated.category,
       amount: validated.amount,
       paymentDate: new Date(validated.paymentDate),
@@ -53,6 +73,7 @@ export async function createExpense(
   });
 
   revalidatePath(`/properties/${propertyId}`);
+  revalidatePath(`/properties/${propertyId}/costs`);
   return { id: expense.id };
 }
 
@@ -67,7 +88,7 @@ export async function updateExpense(
   await prisma.propertyExpense.update({
     where: { id },
     data: {
-      title: validated.title,
+      title: validated.title ?? "Expense",
       category: validated.category,
       amount: validated.amount,
       paymentDate: new Date(validated.paymentDate),
@@ -82,6 +103,7 @@ export async function updateExpense(
   });
 
   revalidatePath(`/properties/${propertyId}`);
+  revalidatePath(`/properties/${propertyId}/costs`);
 }
 
 export async function deleteExpense(id: string, propertyId: string): Promise<void> {
@@ -101,4 +123,5 @@ export async function deleteExpense(id: string, propertyId: string): Promise<voi
 
   await prisma.propertyExpense.delete({ where: { id } });
   revalidatePath(`/properties/${propertyId}`);
+  revalidatePath(`/properties/${propertyId}/costs`);
 }

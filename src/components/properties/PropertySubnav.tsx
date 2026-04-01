@@ -10,6 +10,7 @@ type PropertySubnavItem = {
 const ITEMS: PropertySubnavItem[] = [
   { key: "overview", label: "Overview" },
   { key: "mortgages", label: "Mortgages" },
+  { key: "costs", label: "Costs" },
   { key: "documents", label: "Documents", disabled: true },
   { key: "settings", label: "Settings", disabled: true },
 ];
@@ -19,11 +20,12 @@ export function PropertySubnav({
   active,
 }: {
   propertyId: string;
-  active: "overview" | "mortgages";
+  active: "overview" | "mortgages" | "costs";
 }) {
   const hrefs: Record<string, string> = {
     overview: `/properties/${propertyId}`,
     mortgages: `/properties/${propertyId}/mortgages`,
+    costs: `/properties/${propertyId}/costs`,
   };
 
   return (

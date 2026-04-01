@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createExpense, deleteExpense, updateExpense } from "@/actions/expenses";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { EXPENSE_CATEGORIES, RECURRENCE_TYPES } from "@/lib/validations";
+import { EXPENSE_CATEGORIES } from "@/lib/validations";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,13 +47,6 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-const RECURRENCE_LABELS: Record<string, string> = {
-  ONE_OFF:   "One-off",
-  MONTHLY:   "Monthly",
-  QUARTERLY: "Quarterly",
-  ANNUAL:    "Annual",
-};
-
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
@@ -87,10 +80,7 @@ function ExpenseForm({
   const today = todayString();
   const router = useRouter();
 
-  // Payment date drives the default reportingYear/Month
-  const defaultPaymentDate = editing
-    ? toDateInputValue(editing.paymentDate)
-    : today;
+  const defaultPaymentDate = editing ? toDateInputValue(editing.paymentDate) : today;
   const defaultYear = editing ? editing.reportingYear : new Date().getFullYear();
   const defaultMonth = editing ? editing.reportingMonth : new Date().getMonth() + 1;
 
@@ -103,6 +93,17 @@ function ExpenseForm({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [removeReceipt, setRemoveReceipt] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+
+  // Show extra fields when editing (they may have data) or when user opts in
+  const hasExtraData = editing && (
+    editing.title ||
+    editing.coverageStart ||
+    editing.coverageEnd ||
+    editing.provider ||
+    editing.notes ||
+    editing.receiptFileName
+  );
+  const [showMore, setShowMore] = useState(!!hasExtraData);
 
   function handlePaymentDateChange(value: string) {
     setPaymentDate(value);
@@ -124,9 +125,10 @@ function ExpenseForm({
     setError(null);
 
     const formData = new FormData(e.currentTarget);
-    // Ensure reporting year/month from state are included
     formData.set("reportingYear", String(reportingYear));
     formData.set("reportingMonth", String(reportingMonth));
+    // Always send recurrenceType default
+    if (!formData.get("recurrenceType")) formData.set("recurrenceType", "ONE_OFF");
 
     try {
       let expenseId: string;
@@ -139,7 +141,6 @@ function ExpenseForm({
         expenseId = result.id;
       }
 
-      // Upload receipt if a file was selected
       if (selectedFile) {
         setUploadProgress("Uploading receipt…");
         const fd = new FormData();
@@ -158,15 +159,13 @@ function ExpenseForm({
         }
       } else if (editing && removeReceipt && editing.receiptFileName) {
         setUploadProgress("Removing receipt…");
-        const res = await fetch(`/api/expenses/${expenseId}/receipt`, {
-          method: "DELETE",
-        });
+        const res = await fetch(`/api/expenses/${expenseId}/receipt`, { method: "DELETE" });
         if (!res.ok) {
           const json = await res.json().catch(() => ({}));
           setPending(false);
           setUploadProgress(null);
           router.refresh();
-          onDone(expenseId, json.error ?? "Receipt removal failed. The entry was saved without removing the receipt.");
+          onDone(expenseId, json.error ?? "Receipt removal failed.");
           return;
         }
       }
@@ -184,7 +183,7 @@ function ExpenseForm({
     <form
       onSubmit={handleSubmit}
       data-testid="expense-form"
-      className="px-5 py-4 border-b border-slate-100 space-y-4"
+      className="px-5 py-4 border-b border-slate-100 space-y-3"
     >
       <p className="text-xs font-semibold text-slate-700">
         {editing ? "Edit entry" : "New cost entry"}
@@ -196,22 +195,8 @@ function ExpenseForm({
         </div>
       )}
 
-      {/* Row 1: Title + Category */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">
-            Title <span className="text-red-500">*</span>
-          </label>
-          <input
-            name="title"
-            type="text"
-            required
-            data-testid="expense-title-input"
-            placeholder="e.g. Electricity for February"
-            defaultValue={editing?.title ?? ""}
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+      {/* Core row: Category + Amount + Date */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-1">
             Category <span className="text-red-500">*</span>
@@ -230,10 +215,6 @@ function ExpenseForm({
             ))}
           </select>
         </div>
-      </div>
-
-      {/* Row 2: Amount + Recurrence */}
-      <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-1">
             Amount (€) <span className="text-red-500">*</span>
@@ -251,27 +232,8 @@ function ExpenseForm({
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Type</label>
-          <select
-            name="recurrenceType"
-            data-testid="expense-recurrence-select"
-            defaultValue={editing?.recurrenceType ?? "ONE_OFF"}
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {RECURRENCE_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {RECURRENCE_LABELS[t]}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Row 3: Payment date + Reporting month */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
           <label className="block text-xs font-medium text-slate-600 mb-1">
-            Payment Date <span className="text-red-500">*</span>
+            Date <span className="text-red-500">*</span>
           </label>
           <input
             name="paymentDate"
@@ -283,156 +245,186 @@ function ExpenseForm({
             className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">
-            Shows under month
-            <span className="ml-1 text-slate-400 font-normal">(auto)</span>
-          </label>
-          <div className="flex gap-1.5">
-            <select
-              value={reportingMonth}
-              data-testid="expense-reporting-month-select"
-              onChange={(e) => setReportingMonth(Number(e.target.value))}
-              className="flex-1 border border-slate-200 rounded-lg px-2 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {MONTH_NAMES.slice(1).map((name, i) => (
-                <option key={i + 1} value={i + 1}>
-                  {name}
-                </option>
-              ))}
-            </select>
-            <select
-              value={reportingYear}
-              data-testid="expense-reporting-year-select"
-              onChange={(e) => setReportingYear(Number(e.target.value))}
-              className="w-24 border border-slate-200 rounded-lg px-2 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {yearOptions.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
+      </div>
+
+      {/* More details toggle */}
+      {!showMore && (
+        <button
+          type="button"
+          onClick={() => setShowMore(true)}
+          className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+        >
+          + More details
+        </button>
+      )}
+
+      {/* Optional fields */}
+      {showMore && (
+        <div className="space-y-3 pt-1 border-t border-slate-100">
+          {/* Description + Reporting month */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">
+                Description
+                <span className="ml-1 text-slate-400 font-normal">(optional)</span>
+              </label>
+              <input
+                name="title"
+                type="text"
+                data-testid="expense-title-input"
+                placeholder="e.g. Electricity for February"
+                defaultValue={editing?.title ?? ""}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">
+                Shows under month
+                <span className="ml-1 text-slate-400 font-normal">(auto)</span>
+              </label>
+              <div className="flex gap-1.5">
+                <select
+                  value={reportingMonth}
+                  data-testid="expense-reporting-month-select"
+                  onChange={(e) => setReportingMonth(Number(e.target.value))}
+                  className="flex-1 border border-slate-200 rounded-lg px-2 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {MONTH_NAMES.slice(1).map((name, i) => (
+                    <option key={i + 1} value={i + 1}>{name}</option>
+                  ))}
+                </select>
+                <select
+                  value={reportingYear}
+                  data-testid="expense-reporting-year-select"
+                  onChange={(e) => setReportingYear(Number(e.target.value))}
+                  className="w-24 border border-slate-200 rounded-lg px-2 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {yearOptions.map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Coverage period */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">
+                Coverage from
+                <span className="ml-1 text-slate-400 font-normal">(optional)</span>
+              </label>
+              <input
+                name="coverageStart"
+                type="date"
+                data-testid="expense-coverage-start-input"
+                defaultValue={editing ? toDateInputValue(editing.coverageStart) : ""}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">
+                Coverage to
+                <span className="ml-1 text-slate-400 font-normal">(optional)</span>
+              </label>
+              <input
+                name="coverageEnd"
+                type="date"
+                data-testid="expense-coverage-end-input"
+                defaultValue={editing ? toDateInputValue(editing.coverageEnd) : ""}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Provider + Notes */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">
+                Provider
+                <span className="ml-1 text-slate-400 font-normal">(optional)</span>
+              </label>
+              <input
+                name="provider"
+                type="text"
+                data-testid="expense-provider-input"
+                placeholder="e.g. British Gas"
+                defaultValue={editing?.provider ?? ""}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">
+                Notes
+                <span className="ml-1 text-slate-400 font-normal">(optional)</span>
+              </label>
+              <input
+                name="notes"
+                type="text"
+                data-testid="expense-notes-input"
+                placeholder="Any additional notes"
+                defaultValue={editing?.notes ?? ""}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Receipt */}
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">
+              Receipt
+              <span className="ml-1 text-slate-400 font-normal">(optional, PDF / JPG / PNG, max 4 MB)</span>
+            </label>
+            {editing?.receiptFileName && !selectedFile && (
+              <p className="text-xs text-slate-500 mb-1.5">
+                Current: <span className="font-medium text-slate-700">{editing.receiptFileName}</span>
+                {" — selecting a new file will replace it"}
+              </p>
+            )}
+            {editing?.receiptFileName && !selectedFile && removeReceipt && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-1.5">
+                The current receipt will be removed when you save this entry.
+              </p>
+            )}
+            <div className="flex items-center gap-3">
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                data-testid="expense-receipt-input"
+                className="hidden"
+                onChange={(e) => {
+                  setSelectedFile(e.target.files?.[0] ?? null);
+                  setRemoveReceipt(false);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                data-testid="expense-receipt-choose"
+                className="text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                {selectedFile ? "Change file" : "Choose file"}
+              </button>
+              {editing?.receiptFileName && !selectedFile && (
+                <button
+                  type="button"
+                  data-testid="expense-receipt-remove"
+                  onClick={() => setRemoveReceipt((v) => !v)}
+                  className="text-xs text-red-600 hover:text-red-700 transition-colors"
+                >
+                  {removeReceipt ? "Keep receipt" : "Remove receipt"}
+                </button>
+              )}
+              {selectedFile && (
+                <span className="text-xs text-slate-600 truncate max-w-48">
+                  {selectedFile.name} ({formatFileSize(selectedFile.size)})
+                </span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* Row 4: Coverage period (optional, collapsible) */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">
-            Coverage from
-            <span className="ml-1 text-slate-400 font-normal">(optional)</span>
-          </label>
-          <input
-            name="coverageStart"
-            type="date"
-            data-testid="expense-coverage-start-input"
-            defaultValue={editing ? toDateInputValue(editing.coverageStart) : ""}
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">
-            Coverage to
-            <span className="ml-1 text-slate-400 font-normal">(optional)</span>
-          </label>
-          <input
-            name="coverageEnd"
-            type="date"
-            data-testid="expense-coverage-end-input"
-            defaultValue={editing ? toDateInputValue(editing.coverageEnd) : ""}
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-      </div>
-
-      {/* Row 5: Provider + Notes */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">
-            Provider
-            <span className="ml-1 text-slate-400 font-normal">(optional)</span>
-          </label>
-          <input
-            name="provider"
-            type="text"
-            data-testid="expense-provider-input"
-            placeholder="e.g. British Gas"
-            defaultValue={editing?.provider ?? ""}
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">
-            Notes
-            <span className="ml-1 text-slate-400 font-normal">(optional)</span>
-          </label>
-          <input
-            name="notes"
-            type="text"
-            data-testid="expense-notes-input"
-            placeholder="Any additional notes"
-            defaultValue={editing?.notes ?? ""}
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-      </div>
-
-      {/* Row 6: Receipt PDF */}
-      <div>
-        <label className="block text-xs font-medium text-slate-600 mb-1">
-          Payment receipt
-          <span className="ml-1 text-slate-400 font-normal">(optional, PDF / JPG / PNG, max 4 MB)</span>
-        </label>
-        {editing?.receiptFileName && !selectedFile && (
-          <p className="text-xs text-slate-500 mb-1.5">
-            Current: <span className="font-medium text-slate-700">{editing.receiptFileName}</span>
-            {" — selecting a new file will replace it"}
-          </p>
-        )}
-        {editing?.receiptFileName && !selectedFile && removeReceipt && (
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-1.5">
-            The current receipt will be removed when you save this entry.
-          </p>
-        )}
-        <div className="flex items-center gap-3">
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            data-testid="expense-receipt-input"
-            className="hidden"
-            onChange={(e) => {
-              setSelectedFile(e.target.files?.[0] ?? null);
-              setRemoveReceipt(false);
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            data-testid="expense-receipt-choose"
-            className="text-xs border border-slate-200 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-50 transition-colors"
-          >
-            {selectedFile ? "Change file" : "Choose file"}
-          </button>
-          {editing?.receiptFileName && !selectedFile && (
-            <button
-              type="button"
-              data-testid="expense-receipt-remove"
-              onClick={() => setRemoveReceipt((value) => !value)}
-              className="text-xs text-red-600 hover:text-red-700 transition-colors"
-            >
-              {removeReceipt ? "Keep receipt" : "Remove receipt"}
-            </button>
-          )}
-          {selectedFile && (
-            <span className="text-xs text-slate-600 truncate max-w-48">
-              {selectedFile.name} ({formatFileSize(selectedFile.size)})
-            </span>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* Actions */}
       <div className="flex items-center gap-3 pt-1">
@@ -518,17 +510,8 @@ function ExpenseRow({
             title={`View receipt: ${expense.receiptFileName}`}
             className="text-blue-500 hover:text-blue-700 transition-colors"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="w-4 h-4"
-            >
-              <path
-                fillRule="evenodd"
-                d="M15.621 4.379a3 3 0 00-4.242 0l-7 7a3 3 0 004.241 4.243h.001l.497-.5a.75.75 0 011.064 1.057l-.498.501-.002.002a4.5 4.5 0 01-6.364-6.364l7-7a4.5 4.5 0 016.368 6.36l-3.455 3.553A2.625 2.625 0 119.52 9.52l3.45-3.451a.75.75 0 111.061 1.06l-3.45 3.451a1.125 1.125 0 001.587 1.595l3.454-3.553a3 3 0 000-4.242z"
-                clipRule="evenodd"
-              />
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path fillRule="evenodd" d="M15.621 4.379a3 3 0 00-4.242 0l-7 7a3 3 0 004.241 4.243h.001l.497-.5a.75.75 0 011.064 1.057l-.498.501-.002.002a4.5 4.5 0 01-6.364-6.364l7-7a4.5 4.5 0 016.368 6.36l-3.455 3.553A2.625 2.625 0 119.52 9.52l3.45-3.451a.75.75 0 111.061 1.06l-3.45 3.451a1.125 1.125 0 001.587 1.595l3.454-3.553a3 3 0 000-4.242z" clipRule="evenodd" />
             </svg>
           </a>
         )}
@@ -585,9 +568,7 @@ function MonthGroup({
         className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors text-left"
       >
         <div className="flex items-center gap-3">
-          <span
-            className={`transition-transform duration-150 text-slate-400 text-xs ${open ? "rotate-90" : "rotate-0"}`}
-          >
+          <span className={`transition-transform duration-150 text-slate-400 text-xs ${open ? "rotate-90" : "rotate-0"}`}>
             ▶
           </span>
           <span className="text-sm font-medium text-slate-800">
@@ -632,7 +613,6 @@ export function PropertyExpensesSection({
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  // Summary stats
   const now = new Date();
   const thisMonth = now.getMonth() + 1;
   const thisYear = now.getFullYear();
@@ -643,11 +623,8 @@ export function PropertyExpensesSection({
     .filter((e) => e.reportingYear === thisYear)
     .reduce((sum, e) => sum + e.amount, 0);
 
-  // Group expenses by reporting year+month, sorted newest first
   const monthKeys = Array.from(
-    new Set(
-      expenses.map((e) => `${e.reportingYear}-${String(e.reportingMonth).padStart(2, "0")}`)
-    )
+    new Set(expenses.map((e) => `${e.reportingYear}-${String(e.reportingMonth).padStart(2, "0")}`))
   ).sort((a, b) => b.localeCompare(a));
 
   const grouped: Record<string, Expense[]> = {};
@@ -661,14 +638,11 @@ export function PropertyExpensesSection({
     setNotice(null);
     setEditingExpense(expense);
     setFormState("edit");
-    // Scroll to form
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this cost entry? This cannot be undone.")) return;
-    const expense = expenses.find((e) => e.id === id);
-    if (!expense) return;
     await deleteExpense(id, propertyId);
     router.refresh();
     setNotice(null);
@@ -690,7 +664,7 @@ export function PropertyExpensesSection({
       {/* Header */}
       <div className="flex items-start justify-between px-5 py-4 border-b border-slate-100">
         <div>
-          <h2 className="text-sm font-semibold text-slate-800">Utilities &amp; Costs</h2>
+          <h2 className="text-sm font-semibold text-slate-800">Costs</h2>
           {expenses.length > 0 && (
             <p className="text-xs text-slate-500 mt-0.5">
               {formatCurrency(thisMonthTotal)} this month
@@ -705,7 +679,7 @@ export function PropertyExpensesSection({
             data-testid="expense-add-toggle"
             className="text-xs text-blue-600 hover:text-blue-700 font-medium shrink-0 ml-4"
           >
-            + Add entry
+            + Add
           </button>
         )}
       </div>
@@ -719,7 +693,6 @@ export function PropertyExpensesSection({
         </div>
       )}
 
-      {/* Add / Edit form */}
       {formState !== "idle" && (
         <ExpenseForm
           propertyId={propertyId}
@@ -729,7 +702,6 @@ export function PropertyExpensesSection({
         />
       )}
 
-      {/* Monthly accordion */}
       {expenses.length === 0 && formState === "idle" ? (
         <p className="text-xs text-slate-400 text-center py-6">
           No cost entries yet. Add your first utility or expense.

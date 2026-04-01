@@ -108,7 +108,7 @@ export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
 export const RECURRENCE_TYPES = ["ONE_OFF", "MONTHLY", "QUARTERLY", "ANNUAL"] as const;
 
 export const PropertyExpenseSchema = z.object({
-  title: z.string().min(1, "Title is required").max(200),
+  title: z.string().max(200).optional().or(z.literal("")),
   category: z.enum(EXPENSE_CATEGORIES),
   amount: z.coerce.number().min(0.01, "Amount must be greater than 0"),
   paymentDate: z.string().min(1, "Payment date is required"),

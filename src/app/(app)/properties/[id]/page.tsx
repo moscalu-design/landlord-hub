@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { ArchivePropertyForm } from "@/components/properties/ArchivePropertyForm";
-import { PropertyExpensesSection } from "@/components/properties/PropertyExpensesSection";
+import { PropertyCostsSummary } from "@/components/properties/PropertyCostsSummary";
 import { PropertyMortgageSummary } from "@/components/properties/PropertyMortgageSummary";
 import { PropertyPerformanceChart } from "@/components/properties/PropertyPerformanceChart";
 import { PropertySubnav } from "@/components/properties/PropertySubnav";
@@ -165,8 +165,8 @@ export default async function PropertyDetailPage({
         {/* ── Mortgages ─────────────────────────────────────────────────── */}
         <PropertyMortgageSummary propertyId={id} mortgages={property.mortgages} />
 
-        {/* ── Utilities & Costs ─────────────────────────────────────────── */}
-        <PropertyExpensesSection propertyId={id} expenses={property.expenses} />
+        {/* ── Costs summary ─────────────────────────────────────────────── */}
+        <PropertyCostsSummary propertyId={id} expenses={property.expenses} />
 
         {/* ── Rooms ─────────────────────────────────────────────────────── */}
         <div id="rooms" data-testid="property-rooms-section" className="space-y-3">

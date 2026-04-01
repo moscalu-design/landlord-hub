@@ -27,6 +27,9 @@ datasource db {
 //   DepositStatus:        PENDING | PARTIAL | RECEIVED | REFUNDED | PARTIAL_REFUND | DEDUCTED
 //   DepositTxType:        RECEIVED | DEDUCTION | REFUND | ADJUSTMENT
 //   UserRole:             ADMIN | VIEWER
+//   ExpenseCategory:      ELECTRICITY | GAS | WATER | HEATING | INTERNET | INSURANCE |
+//                         MAINTENANCE | REPAIRS | CLEANING | TAXES | OTHER
+//   RecurrenceType:       MONTHLY | QUARTERLY | ANNUAL | ONE_OFF
 // ─────────────────────────────────────────────────────────────────────────────
 
 model User {
@@ -55,23 +58,43 @@ model Property {
   updatedAt    DateTime @updatedAt
 
   rooms         Room[]
-  utilityCosts  UtilityCost[]
-  propertyNotes Note[]        @relation("PropertyNotes")
-  activityLogs  ActivityLog[] @relation("PropertyActivity")
+  expenses      PropertyExpense[]
+  propertyNotes Note[]           @relation("PropertyNotes")
+  activityLogs  ActivityLog[]    @relation("PropertyActivity")
 }
 
-model UtilityCost {
-  id           String   @id @default(cuid())
-  propertyId   String
-  type         String   // ELECTRICITY | GAS | INTERNET | INSURANCE | CLEANING | WATER | TRASH
-  provider     String?
-  amount       Float
-  billingCycle String   @default("MONTHLY") // MONTHLY | QUARTERLY | ANNUAL | ONE_OFF
-  notes        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+// Owner-side property expense tracking (utilities, insurance, maintenance, etc.)
+// Separate from tenant rent payments — do not conflate.
+//
+// reportingYear + reportingMonth control which month bucket an entry appears in.
+// They default to the paymentDate's year/month but can be overridden by the user
+// (e.g. "Electricity for February" paid in March → reportingMonth = 2).
+//
+// receiptStorageUrl is internal (Vercel Blob or local:// scheme).
+// Clients access receipts via /api/expenses/[id]/receipt which enforces auth.
+model PropertyExpense {
+  id                  String    @id @default(cuid())
+  propertyId          String
+  title               String    // "Electricity for February", "Q1 Insurance", etc.
+  category            String    // ELECTRICITY | GAS | WATER | HEATING | INTERNET |
+                                // INSURANCE | MAINTENANCE | REPAIRS | CLEANING | TAXES | OTHER
+  amount              Float
+  paymentDate         DateTime  // when the bill was paid / recorded
+  reportingYear       Int       // UI grouping: which year this entry belongs to
+  reportingMonth      Int       // UI grouping: 1–12, which month this entry belongs to
+  coverageStart       DateTime? // optional: billing period start
+  coverageEnd         DateTime? // optional: billing period end
+  recurrenceType      String    @default("ONE_OFF") // MONTHLY | QUARTERLY | ANNUAL | ONE_OFF
+  provider            String?   // "British Gas", "BT", etc.
+  notes               String?
+  receiptStorageUrl   String?   // internal — never sent to client
+  receiptFileName     String?
+  receiptFileSize     Int?      // bytes
+  receiptUploadedAt   DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  property     Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  property            Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 }
 
 model Room {

@@ -19,6 +19,7 @@
     "test:e2e:tenants": "playwright test e2e/tenants.spec.ts",
     "test:e2e:payments": "playwright test e2e/payments.spec.ts",
     "test:e2e:files": "playwright test e2e/files.spec.ts",
+    "test:e2e:utilities": "playwright test e2e/utilities.spec.ts",
     "test:e2e:smoke": "playwright test e2e/smoke.spec.ts",
     "test:e2e:room-navigation": "playwright test e2e/room-navigation.spec.ts",
     "test:e2e:auth-redirect": "playwright test e2e/auth-redirect.spec.ts",

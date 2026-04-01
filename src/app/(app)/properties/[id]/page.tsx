@@ -2,8 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { ArchivePropertyForm } from "@/components/properties/ArchivePropertyForm";
+import { PropertyExpensesSection } from "@/components/properties/PropertyExpensesSection";
 import { RoomStatusBadge } from "@/components/shared/StatusBadge";
-import { UtilityCostsSection } from "@/components/properties/UtilityCostsSection";
 import prisma from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -34,8 +34,8 @@ export default async function PropertyDetailPage({
         },
         orderBy: { name: "asc" },
       },
-      utilityCosts: {
-        orderBy: { createdAt: "asc" },
+      expenses: {
+        orderBy: [{ reportingYear: "desc" }, { reportingMonth: "desc" }, { paymentDate: "desc" }],
       },
       activityLogs: {
         orderBy: { createdAt: "desc" },
@@ -87,7 +87,7 @@ export default async function PropertyDetailPage({
           ))}
         </div>
 
-        <UtilityCostsSection propertyId={id} utilityCosts={property.utilityCosts} />
+        <PropertyExpensesSection propertyId={id} expenses={property.expenses} />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Rooms */}

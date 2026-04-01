@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
 const useLocalServer = !process.env.PLAYWRIGHT_BASE_URL;
 
 export default defineConfig({
@@ -19,7 +19,7 @@ export default defineConfig({
   },
   webServer: useLocalServer
     ? {
-        command: "npm run dev -- --hostname 127.0.0.1 --port 3000",
+        command: "npm run dev -- --hostname localhost --port 3000",
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,

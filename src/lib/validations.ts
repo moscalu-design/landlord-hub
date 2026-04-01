@@ -87,17 +87,41 @@ export const PaymentSchema = z.object({
 
 export type PaymentInput = z.infer<typeof PaymentSchema>;
 
-// ─── Utility Cost ─────────────────────────────────────────────────────────────
+// ─── Property Expense ─────────────────────────────────────────────────────────
 
-export const UtilityCostSchema = z.object({
-  type: z.enum(["ELECTRICITY", "GAS", "INTERNET", "INSURANCE", "CLEANING", "WATER", "TRASH"]),
+export const EXPENSE_CATEGORIES = [
+  "ELECTRICITY",
+  "GAS",
+  "WATER",
+  "HEATING",
+  "INTERNET",
+  "INSURANCE",
+  "MAINTENANCE",
+  "REPAIRS",
+  "CLEANING",
+  "TAXES",
+  "OTHER",
+] as const;
+
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
+
+export const RECURRENCE_TYPES = ["ONE_OFF", "MONTHLY", "QUARTERLY", "ANNUAL"] as const;
+
+export const PropertyExpenseSchema = z.object({
+  title: z.string().min(1, "Title is required").max(200),
+  category: z.enum(EXPENSE_CATEGORIES),
+  amount: z.coerce.number().min(0.01, "Amount must be greater than 0"),
+  paymentDate: z.string().min(1, "Payment date is required"),
+  reportingYear: z.coerce.number().int().min(2000).max(2100),
+  reportingMonth: z.coerce.number().int().min(1).max(12),
+  coverageStart: z.string().optional().or(z.literal("")),
+  coverageEnd: z.string().optional().or(z.literal("")),
+  recurrenceType: z.enum(RECURRENCE_TYPES).default("ONE_OFF"),
   provider: z.string().max(100).optional().or(z.literal("")),
-  amount: z.coerce.number().min(0, "Amount must be 0 or more"),
-  billingCycle: z.enum(["MONTHLY", "QUARTERLY", "ANNUAL", "ONE_OFF"]).default("MONTHLY"),
-  notes: z.string().max(500).optional().or(z.literal("")),
+  notes: z.string().max(2000).optional().or(z.literal("")),
 });
 
-export type UtilityCostInput = z.infer<typeof UtilityCostSchema>;
+export type PropertyExpenseInput = z.infer<typeof PropertyExpenseSchema>;
 
 // ─── Deposit transaction ──────────────────────────────────────────────────────
 

@@ -42,6 +42,7 @@ Available scripts:
 - `npm run test:e2e:tenants`
 - `npm run test:e2e:payments`
 - `npm run test:e2e:files`
+- `npm run test:e2e:utilities`
 - `npm run test:e2e:smoke`
 - `npm run test:e2e:room-navigation`
 - `npm run test:e2e:auth-redirect`

@@ -69,8 +69,8 @@ test("utilities and costs support create, grouping, edit, receipt lifecycle, del
     await expect(page.getByTestId("expense-form")).toHaveCount(0);
     await openMonth(page, 2026, 2);
     const createdRow = expenseRow(page, firstTitle);
-    await expect(createdRow).toContainText("£87.55");
-    await expect(page.getByTestId("expense-month-group-2026-02")).toContainText("£87.55");
+    await expect(createdRow).toContainText("€87.55");
+    await expect(page.getByTestId("expense-month-group-2026-02")).toContainText("€87.55");
     const receiptLink = createdRow.locator('[data-testid^="expense-receipt-link-"]').first();
     await expect(receiptLink).toBeVisible();
     const receiptHref = await receiptLink.getAttribute("href");
@@ -100,7 +100,7 @@ test("utilities and costs support create, grouping, edit, receipt lifecycle, del
     await expect(page.getByTestId("expense-form")).toHaveCount(0);
     await openMonth(page, 2026, 4);
     const updatedRow = expenseRow(page, updatedTitle);
-    await expect(updatedRow).toContainText("£120");
+    await expect(updatedRow).toContainText("€120");
     await expect(updatedRow.locator('[data-testid^="expense-receipt-link-"]')).toHaveCount(0);
     const removedReceiptResponse = await page.request.get(receiptHref!);
     expect(removedReceiptResponse.status()).toBe(404);
@@ -132,7 +132,7 @@ test("utilities and costs support create, grouping, edit, receipt lifecycle, del
     await expect(page.getByTestId("expense-notice")).toContainText("Only PDF, JPG, and PNG files are allowed.");
     await openMonth(page, 2026, 5);
     const badRow = expenseRow(page, badTitle);
-    await expect(badRow).toContainText("£25");
+    await expect(badRow).toContainText("€25");
     await expect(badRow.locator('[data-testid^="expense-receipt-link-"]')).toHaveCount(0);
     expect(monitor.pageErrors, "invalid receipt should not trigger page errors").toEqual([]);
 

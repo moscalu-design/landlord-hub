@@ -108,18 +108,22 @@ describe("formatMonthYear", () => {
 // ─── formatCurrency ───────────────────────────────────────────────────────────
 
 describe("formatCurrency", () => {
-  it("formats round pounds without decimals", () => {
-    expect(formatCurrency(1000)).toBe("£1,000");
+  it("formats round euros without decimals", () => {
+    expect(formatCurrency(1000)).toBe("€1,000");
   });
 
-  it("formats pence with up to 2 decimal places", () => {
+  it("formats cents with up to 2 decimal places", () => {
     // minimumFractionDigits is 0, so trailing zeros are omitted
-    expect(formatCurrency(1000.5)).toBe("£1,000.5");
-    expect(formatCurrency(1000.55)).toBe("£1,000.55");
+    expect(formatCurrency(1000.5)).toBe("€1,000.5");
+    expect(formatCurrency(1000.55)).toBe("€1,000.55");
   });
 
   it("formats zero", () => {
-    expect(formatCurrency(0)).toBe("£0");
+    expect(formatCurrency(0)).toBe("€0");
+  });
+
+  it("accepts explicit currency override", () => {
+    expect(formatCurrency(1000, "GBP")).toBe("£1,000");
   });
 });
 

@@ -9,7 +9,7 @@ export function cn(...inputs: ClassValue[]) {
 
 // ─── Currency formatting ───────────────────────────────────────────────────────
 
-export function formatCurrency(amount: number, currency = "GBP"): string {
+export function formatCurrency(amount: number, currency = "EUR"): string {
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency,

@@ -74,7 +74,7 @@ export function AssignTenantForm({ roomId, tenants, defaultRent, defaultDeposit 
 
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1.5">
-          Monthly Rent (£) <span className="text-red-500">*</span>
+          Monthly Rent (€) <span className="text-red-500">*</span>
         </label>
         <input
           type="number"
@@ -89,7 +89,7 @@ export function AssignTenantForm({ roomId, tenants, defaultRent, defaultDeposit 
 
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1.5">
-          Deposit Required (£) <span className="text-red-500">*</span>
+          Deposit Required (€) <span className="text-red-500">*</span>
         </label>
         <input
           type="number"

@@ -4,8 +4,11 @@ import { TopBar } from "@/components/layout/TopBar";
 import { RoomStatusBadge, PaymentStatusBadge, DepositStatusBadge } from "@/components/shared/StatusBadge";
 import { RecordPaymentForm } from "@/components/payments/RecordPaymentForm";
 import { AssignTenantForm } from "@/components/rooms/AssignTenantForm";
+import { ContractUpload } from "@/components/rooms/ContractUpload";
+import { DepositManager } from "@/components/rooms/DepositManager";
 import { DeleteRoomForm } from "@/components/rooms/DeleteRoomForm";
 import { EndTenancyForm } from "@/components/rooms/EndTenancyForm";
+import { summarizeDepositTransactions } from "@/lib/depositUtils";
 import prisma from "@/lib/prisma";
 import { formatCurrency, formatDate, formatMonthYear } from "@/lib/utils";
 
@@ -86,7 +89,7 @@ export default async function RoomDetailPage({
 
       <div className="flex-1 p-6 space-y-6">
         {/* Room info strip */}
-        <div className="flex items-center gap-6 bg-white border border-slate-200 rounded-xl px-5 py-4">
+        <div data-testid="room-info-strip" className="flex items-center gap-6 bg-white border border-slate-200 rounded-xl px-5 py-4">
           <div>
             <p className="text-xs text-slate-500">Monthly Rent</p>
             <p className="text-base font-bold text-slate-800">{formatCurrency(room.monthlyRent)}</p>
@@ -94,7 +97,7 @@ export default async function RoomDetailPage({
           <div className="w-px h-8 bg-slate-200" />
           <div>
             <p className="text-xs text-slate-500">Deposit</p>
-            <p className="text-base font-bold text-slate-800">{formatCurrency(room.depositAmount)}</p>
+            <p data-testid="room-default-deposit-value" className="text-base font-bold text-slate-800">{formatCurrency(room.depositAmount)}</p>
           </div>
           {room.sizeM2 && (
             <>
@@ -121,19 +124,25 @@ export default async function RoomDetailPage({
         {activeOccupancy ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Tenant + Lease */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
+            <div data-testid="room-current-tenant-card" className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-slate-800">Current Tenant</h2>
                 <EndTenancyForm occupancyId={activeOccupancy.id} />
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-sm shrink-0">
+                <Link
+                  href={`/tenants/${activeOccupancy.tenantId}`}
+                  data-testid="room-tenant-avatar-link"
+                  className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-sm shrink-0 hover:bg-blue-200 transition-colors"
+                  aria-label={`Open tenant ${activeOccupancy.tenant.firstName} ${activeOccupancy.tenant.lastName}`}
+                >
                   {activeOccupancy.tenant.firstName[0]}{activeOccupancy.tenant.lastName[0]}
-                </div>
+                </Link>
                 <div>
                   <Link
                     href={`/tenants/${activeOccupancy.tenantId}`}
+                    data-testid="room-tenant-name-link"
                     className="font-medium text-slate-800 hover:text-blue-600 transition-colors text-sm"
                   >
                     {activeOccupancy.tenant.firstName} {activeOccupancy.tenant.lastName}
@@ -164,10 +173,19 @@ export default async function RoomDetailPage({
                   <span className="font-medium text-slate-700">{activeOccupancy.rentDueDay}th of month</span>
                 </div>
               </div>
+
+              <div className="pt-2 border-t border-slate-100">
+                <ContractUpload
+                  occupancyId={activeOccupancy.id}
+                  contractFileName={activeOccupancy.contractFileName}
+                  contractFileSize={activeOccupancy.contractFileSize}
+                  contractUploadedAt={activeOccupancy.contractUploadedAt}
+                />
+              </div>
             </div>
 
             {/* Deposit */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
+            <div data-testid="room-deposit-card" className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-slate-800">Deposit</h2>
                 {activeOccupancy.deposit && (
@@ -180,11 +198,11 @@ export default async function RoomDetailPage({
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-slate-500">Required</span>
-                      <span className="font-semibold text-slate-700">{formatCurrency(activeOccupancy.deposit.required)}</span>
+                      <span data-testid="deposit-required-value" className="font-semibold text-slate-700">{formatCurrency(activeOccupancy.deposit.required)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-slate-500">Received</span>
-                      <span className="font-semibold text-green-700">{formatCurrency(activeOccupancy.deposit.received)}</span>
+                      <span data-testid="deposit-received-value" className="font-semibold text-green-700">{formatCurrency(activeOccupancy.deposit.received)}</span>
                     </div>
                     {activeOccupancy.deposit.receivedAt && (
                       <div className="flex justify-between text-sm">
@@ -210,6 +228,15 @@ export default async function RoomDetailPage({
                       </div>
                     </div>
                   )}
+
+                  <DepositManager
+                    occupancyId={activeOccupancy.id}
+                    required={activeOccupancy.deposit.required}
+                    received={activeOccupancy.deposit.received}
+                    refunded={activeOccupancy.deposit.refunded}
+                    refundDueDate={activeOccupancy.deposit.refundDueDate}
+                    transactions={activeOccupancy.deposit.transactions}
+                  />
                 </>
               ) : (
                 <p className="text-sm text-slate-500">No deposit record</p>
@@ -240,6 +267,65 @@ export default async function RoomDetailPage({
                 </Link>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Deposit refund-due warnings from past tenancies */}
+        {pastOccupancies.some(
+          (o) => o.deposit && !o.deposit.refunded && o.deposit.refundDueDate
+        ) && (
+          <div className="space-y-2">
+            {pastOccupancies
+              .filter((o) => o.deposit && !o.deposit.refunded && o.deposit.refundDueDate)
+              .map((o) => {
+                const refundDue = new Date(o.deposit!.refundDueDate!);
+                const isOverdue = refundDue < now;
+                return (
+                  <div
+                    key={o.id}
+                    data-testid="deposit-refund-warning"
+                    className={`flex items-start gap-3 rounded-xl px-4 py-3 border ${
+                      isOverdue
+                        ? "bg-red-50 border-red-200"
+                        : "bg-amber-50 border-amber-200"
+                    }`}
+                  >
+                    <span className={`text-base mt-0.5 ${isOverdue ? "text-red-500" : "text-amber-500"}`}>⚠</span>
+                    <div>
+                      {(() => {
+                        const summary = summarizeDepositTransactions(
+                          o.deposit!.required,
+                          o.deposit!.transactions
+                        );
+
+                        return (
+                          <>
+                      <p className={`text-sm font-medium ${isOverdue ? "text-red-700" : "text-amber-700"}`}>
+                        Deposit return {isOverdue ? "overdue" : "due soon"}
+                      </p>
+                      <p className={`text-xs mt-0.5 ${isOverdue ? "text-red-600" : "text-amber-600"}`}>
+                        {o.tenant.firstName} {o.tenant.lastName} moved out on{" "}
+                        {formatDate(o.moveOutDate)} — deposit of{" "}
+                        {formatCurrency(summary.outstandingRefund || o.deposit!.required)} should be returned by{" "}
+                        {formatDate(refundDue)}.
+                      </p>
+                          </>
+                        );
+                      })()}
+
+                      <DepositManager
+                        occupancyId={o.id}
+                        required={o.deposit!.required}
+                        received={o.deposit!.received}
+                        refunded={o.deposit!.refunded}
+                        refundDueDate={o.deposit!.refundDueDate}
+                        transactions={o.deposit!.transactions}
+                        compact
+                      />
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         )}
 

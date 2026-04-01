@@ -180,6 +180,14 @@ model Occupancy {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  // Active rental contract — stored on the tenancy, surfaced on the room screen.
+  // contractStorageUrl is internal (Vercel Blob or local:// scheme).
+  // Clients access it via /api/occupancies/[id]/contract which enforces auth.
+  contractStorageUrl   String?
+  contractFileName     String?
+  contractFileSize     Int?      // bytes
+  contractUploadedAt   DateTime?
+
   room            Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
   tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   payments        Payment[]
@@ -222,6 +230,9 @@ model Deposit {
   refundAmount   Float?
   refundedAt     DateTime?
   deductionNotes String?
+  // Set when tenancy ends: moveOutDate + 30 days.
+  // Drives the "deposit return due" reminder on the room screen.
+  refundDueDate  DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 

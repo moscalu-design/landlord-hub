@@ -122,14 +122,26 @@ export async function createOccupancy(formData: FormData) {
 export async function endOccupancy(occupancyId: string, _formData?: FormData) {
   const user = await requireAuth();
 
+  const moveOutDate = new Date();
+  const refundDueDate = new Date(moveOutDate);
+  refundDueDate.setDate(refundDueDate.getDate() + 30);
+
   const occupancy = await prisma.occupancy.update({
     where: { id: occupancyId },
     data: {
       status: "ENDED",
-      moveOutDate: new Date(),
+      moveOutDate,
     },
-    include: { room: true },
+    include: { room: true, deposit: true },
   });
+
+  // Set deposit refund due date when tenancy ends
+  if (occupancy.deposit && !occupancy.deposit.refunded) {
+    await prisma.deposit.update({
+      where: { id: occupancy.deposit.id },
+      data: { refundDueDate },
+    });
+  }
 
   // Set room back to VACANT
   await prisma.room.update({

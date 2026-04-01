@@ -87,7 +87,7 @@ export function RecordPaymentForm({
       {action ? (
         <form action={action} className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">Amount Paid (£)</label>
+            <label className="block text-xs font-medium text-slate-600 mb-1.5">Amount Paid (€)</label>
             <input
               name="amountPaid"
               type="number"

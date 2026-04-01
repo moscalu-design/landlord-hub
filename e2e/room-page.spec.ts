@@ -27,6 +27,7 @@ test("room tenancy, deposit, tenant navigation, and contract workflow stay consi
   let propertyUrl: string | null = null;
   let roomUrl: string | null = null;
   let tenantName = "";
+  let quickCreatedTenantName = "";
 
   await login(page);
   monitor.reset();
@@ -49,16 +50,20 @@ test("room tenancy, deposit, tenant navigation, and contract workflow stay consi
     monitor.reset();
     await page.goto(roomUrl, { waitUntil: "networkidle" });
     await expect(page.getByTestId("room-default-deposit-value")).toContainText("€1,234");
-    await expect(page.getByRole("heading", { name: "Assign Tenant" })).toBeVisible();
+    await expect(page.getByTestId("room-vacant-state")).toContainText("No current tenant assigned");
+    await expect(page.getByTestId("room-add-tenant-button")).toBeVisible();
+    await expect(page.locator('select[name="tenantId"]')).toHaveCount(0);
     await expect(page.locator("body")).not.toContainText("£");
     await assertAppHealthy(page, monitor, "vacant room renders");
 
     monitor.reset();
-    await page.locator('select[name="tenantId"]').selectOption(tenant.id);
+    await page.getByTestId("room-add-tenant-button").click();
+    await expect(page.getByTestId("add-tenant-modal")).toBeVisible();
+    await page.getByTestId("assign-tenant-select").selectOption(tenant.id);
     await page.locator('input[name="leaseStart"]').fill("2025-08-01");
     await page.locator('input[name="leaseEnd"]').fill("2026-12-31");
     await page.locator('input[name="moveInDate"]').fill("2025-08-01");
-    await page.getByRole("button", { name: "Assign Tenant" }).click();
+    await page.getByTestId("assign-tenant-submit").click();
     await expect(page.getByTestId("room-current-tenant-card")).toBeVisible();
     await expect(page.getByTestId("room-tenant-name-link")).toContainText(tenantName);
     await expect(page.getByText("31 Dec 2026")).toBeVisible();
@@ -210,7 +215,7 @@ test("room tenancy, deposit, tenant navigation, and contract workflow stay consi
     monitor.reset();
     page.once("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "End Tenancy" }).click();
-    await expect(page.getByRole("heading", { name: "Assign Tenant" })).toBeVisible();
+    await expect(page.getByTestId("room-vacant-state")).toContainText("No current tenant assigned");
     const warning = page.getByTestId("deposit-refund-warning");
     await expect(warning).toContainText("Deposit return");
     await expect(warning).toContainText(tenantName);
@@ -239,9 +244,31 @@ test("room tenancy, deposit, tenant navigation, and contract workflow stay consi
 
     monitor.reset();
     await page.reload({ waitUntil: "networkidle" });
-    await expect(page.getByRole("heading", { name: "Assign Tenant" })).toBeVisible();
+    await expect(page.getByTestId("room-vacant-state")).toContainText("No current tenant assigned");
     await expect(page.getByTestId("deposit-refund-warning")).toHaveCount(0);
     await assertAppHealthy(page, monitor, "ended tenancy state persists after reload");
+
+    monitor.reset();
+    const quickCreateStamp = Date.now();
+    quickCreatedTenantName = `Modal Tenant ${quickCreateStamp}`;
+    await page.getByTestId("room-add-tenant-button").click();
+    await expect(page.getByTestId("add-tenant-modal")).toBeVisible();
+    await page.getByTestId("create-new-tenant-tab").click();
+    await page.locator('input[name="firstName"]').last().fill("Modal");
+    await page.locator('input[name="lastName"]').last().fill(`Tenant ${quickCreateStamp}`);
+    await page.locator('input[name="email"]').last().fill(`modal+${quickCreateStamp}@example.com`);
+    await page.getByTestId("create-tenant-submit").click();
+    await expect(page.getByTestId("assign-existing-tab")).toHaveClass(/shadow-sm/);
+    await expect(page.getByTestId("assign-tenant-select")).toHaveValue(/.+/);
+    await expect(page.getByTestId("assign-tenant-select").locator('option:checked')).toContainText(
+      quickCreatedTenantName
+    );
+    await page.locator('input[name="leaseStart"]').fill("2026-01-01");
+    await page.locator('input[name="leaseEnd"]').fill("2026-12-31");
+    await page.locator('input[name="moveInDate"]').fill("2026-01-01");
+    await page.getByTestId("assign-tenant-submit").click();
+    await expect(page.getByTestId("room-current-tenant-card")).toContainText(quickCreatedTenantName);
+    await assertAppHealthy(page, monitor, "new tenant can be created and assigned from modal");
   } finally {
     if (propertyUrl) {
       await archiveProperty(page, propertyUrl);

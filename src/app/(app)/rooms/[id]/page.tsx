@@ -271,18 +271,26 @@ export default async function RoomDetailPage({
             </div>
           </div>
         ) : (
-          <div className="bg-white border border-slate-200 rounded-xl p-6">
-            <h2 className="text-sm font-semibold text-slate-800 mb-4">Assign Tenant</h2>
-            {availableTenants.length > 0 ? (
-              <AssignTenantForm roomId={id} tenants={availableTenants} defaultRent={room.monthlyRent} defaultDeposit={room.depositAmount} />
-            ) : (
-              <div className="text-center py-4">
-                <p className="text-sm text-slate-500 mb-3">No available tenants.</p>
-                <Link href="/tenants/new" className="text-sm text-blue-600 font-medium hover:text-blue-700">
-                  Create a tenant first →
-                </Link>
+          <div
+            data-testid="room-vacant-state"
+            className="bg-white border border-slate-200 rounded-xl p-6"
+          >
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-800">
+                  No current tenant assigned
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  This room is currently vacant. Add a tenant when you are ready to start a new tenancy.
+                </p>
               </div>
-            )}
+              <AssignTenantForm
+                roomId={id}
+                tenants={availableTenants}
+                defaultRent={room.monthlyRent}
+                defaultDeposit={room.depositAmount}
+              />
+            </div>
           </div>
         )}
 

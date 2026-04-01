@@ -12,23 +12,22 @@ function SubmitButton() {
   return (
     <button
       type="submit"
+      data-testid="record-payment-submit"
       disabled={pending}
       className="w-full bg-blue-500 hover:bg-blue-600 disabled:opacity-60 text-white font-medium text-sm py-2.5 rounded-lg transition-colors"
     >
-      {pending ? "Recording…" : "Record Payment"}
+      {pending ? "Recording…" : "Record Payment Now"}
     </button>
   );
 }
 
 interface RecordPaymentFormProps {
-  occupancyId: string;
   currentYear: number;
   currentMonth: number;
   payments: Payment[];
 }
 
 export function RecordPaymentForm({
-  occupancyId,
   currentYear,
   currentMonth,
   payments,
@@ -128,6 +127,11 @@ export function RecordPaymentForm({
               placeholder="Optional…"
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+          <div className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2">
+            <p className="text-xs text-blue-700">
+              Save this payment to update the room ledger and tenant balance.
+            </p>
           </div>
           <SubmitButton />
         </form>

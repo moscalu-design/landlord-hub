@@ -1,27 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
-import { RoomStatusBadge, PaymentStatusBadge, DepositStatusBadge } from "@/components/shared/StatusBadge";
+import { RoomStatusBadge, DepositStatusBadge } from "@/components/shared/StatusBadge";
 import { RecordPaymentForm } from "@/components/payments/RecordPaymentForm";
 import { AssignTenantForm } from "@/components/rooms/AssignTenantForm";
 import { ContractUpload } from "@/components/rooms/ContractUpload";
 import { DepositManager } from "@/components/rooms/DepositManager";
+import {
+  PaymentHistorySection,
+  type RoomPaymentHistoryRow,
+} from "@/components/rooms/PaymentHistorySection";
 import { DeleteRoomForm } from "@/components/rooms/DeleteRoomForm";
 import { EndTenancyForm } from "@/components/rooms/EndTenancyForm";
 import { summarizeDepositTransactions } from "@/lib/depositUtils";
 import prisma from "@/lib/prisma";
-import { formatCurrency, formatDate, formatMonthYear } from "@/lib/utils";
-
-// We show the last 12 months of payments
-function getLast12Months() {
-  const months = [];
-  const now = new Date();
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({ year: d.getFullYear(), month: d.getMonth() + 1 });
-  }
-  return months;
-}
+import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default async function RoomDetailPage({
   params,
@@ -52,6 +45,25 @@ export default async function RoomDetailPage({
 
   const activeOccupancy = room.occupancies.find((o) => o.status === "ACTIVE");
   const pastOccupancies = room.occupancies.filter((o) => o.status !== "ACTIVE");
+  const paymentHistory: RoomPaymentHistoryRow[] = room.occupancies
+    .flatMap((occupancy) =>
+      occupancy.payments.map((payment) => ({
+        id: payment.id,
+        payerName: `${occupancy.tenant.firstName} ${occupancy.tenant.lastName}`,
+        periodYear: payment.periodYear,
+        periodMonth: payment.periodMonth,
+        amountDue: payment.amountDue,
+        amountPaid: payment.amountPaid,
+        paidAt: payment.paidAt,
+        paymentMethod: payment.paymentMethod,
+        status: payment.status,
+      }))
+    )
+    .sort((a, b) => {
+      if (a.periodYear !== b.periodYear) return b.periodYear - a.periodYear;
+      if (a.periodMonth !== b.periodMonth) return b.periodMonth - a.periodMonth;
+      return 0;
+    });
 
   // Tenants available to assign (no active occupancy)
   const availableTenants = await prisma.tenant.findMany({
@@ -245,9 +257,13 @@ export default async function RoomDetailPage({
 
             {/* Record Payment (current month) */}
             <div className="bg-white border border-slate-200 rounded-xl p-5">
-              <h2 className="text-sm font-semibold text-slate-800 mb-4">Record Payment</h2>
+              <div className="mb-4">
+                <h2 className="text-sm font-semibold text-slate-800">Record Payment</h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Choose a period and save the payment with the button below.
+                </p>
+              </div>
               <RecordPaymentForm
-                occupancyId={activeOccupancy.id}
                 currentYear={currentYear}
                 currentMonth={currentMonth}
                 payments={activeOccupancy.payments}
@@ -329,46 +345,7 @@ export default async function RoomDetailPage({
           </div>
         )}
 
-        {/* Payment Ledger */}
-        {activeOccupancy && activeOccupancy.payments.length > 0 && (
-          <div className="bg-white border border-slate-200 rounded-xl">
-            <div className="px-5 py-4 border-b border-slate-100">
-              <h2 className="text-sm font-semibold text-slate-800">Payment History</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100">
-                    <th className="text-left text-xs font-medium text-slate-500 px-5 py-3">Period</th>
-                    <th className="text-left text-xs font-medium text-slate-500 px-5 py-3">Due</th>
-                    <th className="text-left text-xs font-medium text-slate-500 px-5 py-3">Paid</th>
-                    <th className="text-left text-xs font-medium text-slate-500 px-5 py-3">Date Paid</th>
-                    <th className="text-left text-xs font-medium text-slate-500 px-5 py-3">Method</th>
-                    <th className="text-left text-xs font-medium text-slate-500 px-5 py-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {activeOccupancy.payments.map((payment) => (
-                    <tr key={payment.id} className="hover:bg-slate-50">
-                      <td className="px-5 py-3 font-medium text-slate-800">
-                        {formatMonthYear(payment.periodYear, payment.periodMonth)}
-                      </td>
-                      <td className="px-5 py-3 text-slate-700">{formatCurrency(payment.amountDue)}</td>
-                      <td className="px-5 py-3 text-slate-700">
-                        {payment.amountPaid > 0 ? formatCurrency(payment.amountPaid) : "—"}
-                      </td>
-                      <td className="px-5 py-3 text-slate-500">{formatDate(payment.paidAt)}</td>
-                      <td className="px-5 py-3 text-slate-500">{payment.paymentMethod?.replace("_", " ") ?? "—"}</td>
-                      <td className="px-5 py-3">
-                        <PaymentStatusBadge status={payment.status} size="sm" />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        <PaymentHistorySection roomId={id} payments={paymentHistory} />
 
         {/* Notes */}
         {room.notes && (

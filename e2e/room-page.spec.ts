@@ -26,7 +26,6 @@ test("room tenancy, deposit, tenant navigation, and contract workflow stay consi
   const monitor = attachAppMonitor(page);
   let propertyUrl: string | null = null;
   let roomUrl: string | null = null;
-  let tenantUrl: string | null = null;
   let tenantName = "";
 
   await login(page);
@@ -44,7 +43,6 @@ test("room tenancy, deposit, tenant navigation, and contract workflow stay consi
   });
   roomUrl = room.url;
   const tenant = await createTenant(page);
-  tenantUrl = tenant.url;
   tenantName = `${tenant.firstName} ${tenant.lastName}`;
 
   try {
@@ -57,9 +55,9 @@ test("room tenancy, deposit, tenant navigation, and contract workflow stay consi
 
     monitor.reset();
     await page.locator('select[name="tenantId"]').selectOption(tenant.id);
-    await page.locator('input[name="leaseStart"]').fill("2026-04-01");
+    await page.locator('input[name="leaseStart"]').fill("2025-08-01");
     await page.locator('input[name="leaseEnd"]').fill("2026-12-31");
-    await page.locator('input[name="moveInDate"]').fill("2026-04-01");
+    await page.locator('input[name="moveInDate"]').fill("2025-08-01");
     await page.getByRole("button", { name: "Assign Tenant" }).click();
     await expect(page.getByTestId("room-current-tenant-card")).toBeVisible();
     await expect(page.getByTestId("room-tenant-name-link")).toContainText(tenantName);
@@ -68,6 +66,9 @@ test("room tenancy, deposit, tenant navigation, and contract workflow stay consi
     await expect(page.getByTestId("deposit-received-value")).toContainText("€0");
     await expect(page.getByTestId("deposit-outstanding-value")).toContainText("€1,234");
     await expect(page.getByTestId("room-deposit-card")).toContainText("Pending");
+    await expect(page.getByTestId("deposit-update-button")).toBeVisible();
+    await expect(page.getByTestId("payment-history-payer").first()).toContainText(tenantName);
+    await expect(page.locator("tbody tr")).toHaveCount(5);
     await assertAppHealthy(page, monitor, "tenant assigned with pending deposit");
 
     monitor.reset();
@@ -163,6 +164,8 @@ test("room tenancy, deposit, tenant navigation, and contract workflow stay consi
     await assertAppHealthy(page, monitor, "contract replaced and removed");
 
     monitor.reset();
+    await page.getByTestId("deposit-update-button").click();
+    await expect(page.getByTestId("deposit-update-modal")).toBeVisible();
     await page.getByTestId("deposit-action-type").selectOption("RECEIVED");
     await page.getByTestId("deposit-action-amount").fill("1234");
     await page.getByTestId("deposit-action-description").fill("Initial deposit received");
@@ -173,6 +176,33 @@ test("room tenancy, deposit, tenant navigation, and contract workflow stay consi
     await expect(page.getByTestId("deposit-outstanding-value")).toContainText("€0");
     await expect(page.getByTestId("room-deposit-card")).toContainText("Received");
     await assertAppHealthy(page, monitor, "deposit received recorded");
+
+    monitor.reset();
+    await expect(page.getByRole("button", { name: "Record Payment Now" })).toBeVisible();
+    const currentPeriodRow = page.locator("tbody tr").first();
+    await expect(currentPeriodRow).toContainText(tenantName);
+    await page.locator('input[name="amountPaid"]').fill("1234");
+    await page.locator('select[name="paymentMethod"]').selectOption("BANK_TRANSFER");
+    await page.getByRole("button", { name: "Record Payment Now" }).click();
+    await expect(currentPeriodRow).toContainText("€1,234");
+    await expect(currentPeriodRow).toContainText("Paid");
+    await assertAppHealthy(page, monitor, "payment recorded from room screen");
+
+    monitor.reset();
+    await page.getByTestId("payment-history-next").click();
+    await expect(page.locator("tbody tr")).toHaveCount(4);
+    await expect(page.getByText("Page 2 of 2")).toBeVisible();
+    await page.getByTestId("payment-history-prev").click();
+    await expect(page.getByText("Page 1 of 2")).toBeVisible();
+    const exportHref = await page.getByTestId("payment-history-export").getAttribute("href");
+    expect(exportHref).toBe(`/api/rooms/${room.id}/payments/export`);
+    const exportResponse = await page.request.get(exportHref!);
+    expect(exportResponse.status()).toBe(200);
+    expect(exportResponse.headers()["content-type"]).toContain("text/csv");
+    const exportBody = await exportResponse.text();
+    expect(exportBody).toContain(tenantName);
+    expect(exportBody).toContain("Payer Name");
+    await assertAppHealthy(page, monitor, "payment history pagination and export work");
 
     const refundDue = new Date();
     refundDue.setDate(refundDue.getDate() + 30);
@@ -189,6 +219,8 @@ test("room tenancy, deposit, tenant navigation, and contract workflow stay consi
 
     monitor.reset();
     const compactManager = page.getByTestId("deposit-manager-compact");
+    await compactManager.getByTestId("deposit-update-button").click();
+    await expect(page.getByTestId("deposit-update-modal")).toBeVisible();
     await compactManager.getByTestId("deposit-action-type").selectOption("DEDUCTION");
     await compactManager.getByTestId("deposit-action-amount").fill("200");
     await compactManager.getByTestId("deposit-action-description").fill("Cleaning deduction");
@@ -196,6 +228,8 @@ test("room tenancy, deposit, tenant navigation, and contract workflow stay consi
     await expect(compactManager.getByTestId("deposit-deductions-total")).toContainText("€200");
     await expect(compactManager.getByTestId("deposit-outstanding-refund")).toContainText("€1,034");
 
+    await compactManager.getByTestId("deposit-update-button").click();
+    await expect(page.getByTestId("deposit-update-modal")).toBeVisible();
     await compactManager.getByTestId("deposit-action-type").selectOption("REFUND");
     await compactManager.getByTestId("deposit-action-amount").fill("1034");
     await compactManager.getByTestId("deposit-action-description").fill("Net refund sent");

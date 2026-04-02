@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
+import { CostsCategoryChart } from "@/components/properties/CostsCategoryChart";
 import { PropertyExpensesSection } from "@/components/properties/PropertyExpensesSection";
 import { PropertySubnav } from "@/components/properties/PropertySubnav";
 import prisma from "@/lib/prisma";
@@ -34,6 +35,8 @@ export default async function PropertyCostsPage({
 
       <div className="flex-1 p-6 space-y-6">
         <PropertySubnav propertyId={id} active="costs" />
+
+        <CostsCategoryChart expenses={property.expenses} />
 
         <PropertyExpensesSection propertyId={id} expenses={property.expenses} />
       </div>

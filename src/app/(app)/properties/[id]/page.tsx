@@ -9,6 +9,7 @@ import { PropertySubnav } from "@/components/properties/PropertySubnav";
 import { buildChartData } from "@/components/properties/propertyPerformanceData";
 import { RoomStatusBadge } from "@/components/shared/StatusBadge";
 import { getMonthlyCostForMonth } from "@/lib/mortgage";
+import { getExpenseTotalForMonth } from "@/lib/expenses";
 import prisma from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -85,10 +86,8 @@ export default async function PropertyDetailPage({
     .filter((r) => r.status === "OCCUPIED")
     .reduce((sum, r) => sum + r.monthlyRent, 0);
 
-  // Monthly costs = expenses bucketed to this month + active mortgage payments
-  const monthlyExpenses = property.expenses
-    .filter((e) => e.reportingYear === thisYear && e.reportingMonth === thisMonth)
-    .reduce((sum, e) => sum + e.amount, 0);
+  // Monthly costs = expenses for this month (recurring + one-off) + active mortgage payments
+  const monthlyExpenses = getExpenseTotalForMonth(property.expenses, thisYear, thisMonth);
 
   const monthlyMortgages = property.mortgages
     .reduce((sum, mortgage) => sum + getMonthlyCostForMonth(mortgage, thisYear, thisMonth), 0);

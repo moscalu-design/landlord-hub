@@ -1,4 +1,5 @@
 import { getMonthlyCostForMonth, type MortgageRecord } from "@/lib/mortgage";
+import { getExpenseTotalForMonth, type ExpenseForCalc } from "@/lib/expenses";
 
 export type ChartMonth = {
   label: string;
@@ -12,7 +13,7 @@ const MONTH_SHORT = [
 ];
 
 export function buildChartData(
-  expenses: Array<{ reportingYear: number; reportingMonth: number; amount: number }>,
+  expenses: ExpenseForCalc[],
   payments: Array<{ periodYear: number; periodMonth: number; amountDue: number }>,
   mortgages: MortgageRecord[] = []
 ): ChartMonth[] {
@@ -23,9 +24,7 @@ export function buildChartData(
     const year = d.getFullYear();
     const month = d.getMonth() + 1;
 
-    const expenseCosts = expenses
-      .filter((e) => e.reportingYear === year && e.reportingMonth === month)
-      .reduce((sum, e) => sum + e.amount, 0);
+    const expenseCosts = getExpenseTotalForMonth(expenses, year, month);
 
     const mortgageCosts = mortgages
       .reduce((sum, mortgage) => sum + getMonthlyCostForMonth(mortgage, year, month), 0);

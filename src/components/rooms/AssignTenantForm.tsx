@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
   createTenantForAssignment,
@@ -64,26 +64,30 @@ export function AssignTenantForm({
   const [search, setSearch] = useState("");
   const [selectedTenantId, setSelectedTenantId] = useState("");
   const [tenantOptions, setTenantOptions] = useState(tenants);
+  const handledCreatedTenantId = useRef<string | null>(null);
   const [createState, createTenantAction] = useActionState(
     createTenantForAssignment,
     initialCreateState
   );
 
   useEffect(() => {
-    if (createState.success && createState.tenant) {
-      const createdTenant = createState.tenant;
-      const alreadyPresent = tenantOptions.some((tenant) => tenant.id === createdTenant.id);
-      if (!alreadyPresent) {
+    if (!createState.success || !createState.tenant) return;
+    const createdTenant = createState.tenant;
+    if (handledCreatedTenantId.current === createdTenant.id) return;
+    handledCreatedTenantId.current = createdTenant.id;
+
+    queueMicrotask(() => {
         setTenantOptions((current) =>
-          [...current, createdTenant].sort((a, b) =>
-            `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
-          )
+          current.some((tenant) => tenant.id === createdTenant.id)
+            ? current
+            : [...current, createdTenant].sort((a, b) =>
+                `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
+              )
         );
-      }
       setSelectedTenantId(createdTenant.id);
       setMode("assign");
-    }
-  }, [createState, tenantOptions]);
+    });
+  }, [createState]);
 
   const filteredTenants = useMemo(() => {
     const query = search.trim().toLowerCase();

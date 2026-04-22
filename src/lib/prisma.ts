@@ -1,5 +1,6 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
+import type { PrismaClientOptions } from "@/generated/prisma/internal/prismaNamespace";
 
 function createPrismaClient() {
   const url = process.env.DATABASE_URL;
@@ -7,7 +8,7 @@ function createPrismaClient() {
 
   const authToken = process.env.DATABASE_AUTH_TOKEN;
   const adapter = new PrismaLibSql({ url, authToken });
-  return new PrismaClient({ adapter } as any);
+  return new PrismaClient({ adapter } satisfies PrismaClientOptions);
 }
 
 // Prevent multiple instances during Next.js hot reload in development

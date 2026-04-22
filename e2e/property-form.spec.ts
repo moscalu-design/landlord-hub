@@ -31,19 +31,19 @@ test("property edit flow saves and restores the selected property", async ({ pag
     await page.getByRole("button", { name: "Save Changes" }).click();
     await page.waitForLoadState("networkidle");
     await expect(page).toHaveURL(new RegExp(`${propertyPath!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`));
-    await expect(page.getByRole("heading", { name: originalName })).toBeVisible();
-    await expect(page.getByText(updatedNotes)).toBeVisible();
+    await expect(page.locator("h1").first()).toHaveText(originalName);
     await assertAppHealthy(page, monitor, `property detail after edit ${propertyPath}`);
+
+    await page.goto(`${propertyPath}/edit`, { waitUntil: "networkidle" });
+    await expect(page.locator('textarea[name="notes"]')).toHaveValue(updatedNotes);
   } finally {
     monitor.reset();
     await page.goto(`${propertyPath}/edit`, { waitUntil: "networkidle" });
     await notesInput.fill(originalNotes);
     await page.getByRole("button", { name: "Save Changes" }).click();
     await page.waitForLoadState("networkidle");
-    await expect(page.getByRole("heading", { name: originalName })).toBeVisible();
-    if (originalNotes) {
-      await expect(page.getByText(originalNotes)).toBeVisible();
-    }
+    await expect(page).toHaveURL(new RegExp(`${propertyPath!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`));
+    await expect(page.locator("h1").first()).toHaveText(originalName);
     await assertAppHealthy(page, monitor, `property detail restored ${propertyPath}`);
   }
 });

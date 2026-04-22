@@ -16,6 +16,7 @@
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
+import type { PrismaClientOptions } from "../src/generated/prisma/internal/prismaNamespace";
 import bcrypt from "bcryptjs";
 
 import path from "path";
@@ -24,7 +25,7 @@ import path from "path";
 const dbPath = path.resolve(process.cwd(), "dev.db");
 const libsqlUrl = `file:${dbPath}`;
 const adapter = new PrismaLibSql({ url: libsqlUrl });
-const prisma = new PrismaClient({ adapter } as any);
+const prisma = new PrismaClient({ adapter } satisfies PrismaClientOptions);
 
 function getDueDate(year: number, month: number, dueDay: number): Date {
   const maxDay = new Date(year, month, 0).getDate();

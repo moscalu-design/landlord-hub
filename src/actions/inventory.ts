@@ -66,7 +66,7 @@ export async function updateInventoryItem(
   });
 
   await prisma.roomInventoryItem.update({
-    where: { id },
+    where: { id, roomId },
     data: {
       name: validated.name,
       category: validated.category,
@@ -82,7 +82,7 @@ export async function updateInventoryItem(
 
 export async function deleteInventoryItem(id: string, roomId: string): Promise<void> {
   await requireAuth();
-  await prisma.roomInventoryItem.delete({ where: { id } });
+  await prisma.roomInventoryItem.delete({ where: { id, roomId } });
   revalidatePath(`/rooms/${roomId}/inventory`);
 }
 
@@ -101,6 +101,36 @@ export async function createInspection(
   await requireAuth();
 
   const validated = InspectionWithItemsSchema.parse(data);
+  const occupancy = await prisma.occupancy.findUnique({
+    where: { id: occupancyId },
+    select: {
+      roomId: true,
+      inspections: {
+        where: { type: validated.inspection.type },
+        select: { id: true },
+        take: 1,
+      },
+    },
+  });
+
+  if (!occupancy || occupancy.roomId !== roomId) {
+    throw new Error("Occupancy does not belong to this room.");
+  }
+
+  if (occupancy.inspections.length > 0) {
+    throw new Error("This inspection type has already been recorded for the tenancy.");
+  }
+
+  const requestedItemIds = validated.items.map((item) => item.inventoryItemId);
+  const roomItems = await prisma.roomInventoryItem.findMany({
+    where: { roomId, id: { in: requestedItemIds } },
+    select: { id: true, name: true, quantity: true },
+  });
+  const roomItemById = new Map(roomItems.map((item) => [item.id, item]));
+
+  if (roomItems.length !== requestedItemIds.length) {
+    throw new Error("Inspection contains inventory items that do not belong to this room.");
+  }
 
   const inspection = await prisma.inventoryInspection.create({
     data: {
@@ -109,13 +139,20 @@ export async function createInspection(
       date: new Date(validated.inspection.date),
       notes: validated.inspection.notes || null,
       items: {
-        create: validated.items.map((item) => ({
-          inventoryItemId: item.inventoryItemId,
-          itemName: item.itemName,
-          condition: item.condition,
-          quantity: item.quantity,
-          notes: item.notes || null,
-        })),
+        create: validated.items.map((item) => {
+          const roomItem = roomItemById.get(item.inventoryItemId);
+          if (!roomItem) {
+            throw new Error("Inspection contains an unknown inventory item.");
+          }
+
+          return {
+            inventoryItemId: item.inventoryItemId,
+            itemName: roomItem.name,
+            condition: item.condition,
+            quantity: item.quantity,
+            notes: item.notes || null,
+          };
+        }),
       },
     },
   });

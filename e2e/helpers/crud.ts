@@ -62,7 +62,7 @@ export async function createProperty(page: Page, overrides?: Partial<{
 }
 
 export async function archiveProperty(page: Page, propertyUrl: string) {
-  await page.goto(propertyUrl, { waitUntil: "networkidle" });
+  await page.goto(propertyUrl, { waitUntil: "domcontentloaded" });
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByTestId("archive-property-button").click();
   await expect(page).toHaveURL(/\/properties$/);
@@ -110,7 +110,7 @@ export async function createRoom(page: Page, propertyId: string, overrides?: Par
 }
 
 export async function deleteRoom(page: Page, roomUrl: string) {
-  await page.goto(roomUrl, { waitUntil: "networkidle" });
+  await page.goto(roomUrl, { waitUntil: "domcontentloaded" });
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByTestId("delete-room-button").click();
   await expect(page).toHaveURL(/\/properties\/[^/]+$/);
@@ -157,7 +157,7 @@ export async function createTenant(page: Page, overrides?: Partial<{
 }
 
 export async function deleteTenant(page: Page, tenantUrl: string) {
-  await page.goto(tenantUrl, { waitUntil: "networkidle" });
+  await page.goto(tenantUrl, { waitUntil: "domcontentloaded" });
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByTestId("delete-tenant-button").click();
   await expect(page).toHaveURL(/\/tenants$/);

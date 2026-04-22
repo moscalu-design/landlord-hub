@@ -2,7 +2,6 @@ import Link from "next/link";
 import { TopBar } from "@/components/layout/TopBar";
 import { StatCard } from "@/components/shared/StatCard";
 import { PaymentStatusBadge } from "@/components/shared/StatusBadge";
-import { RoomStatusBadge } from "@/components/shared/StatusBadge";
 import prisma from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -14,13 +13,11 @@ async function getDashboardData() {
   const [
     properties,
     rooms,
-    tenants,
     currentMonthPayments,
     recentActivity,
   ] = await Promise.all([
     prisma.property.findMany({ where: { status: { not: "ARCHIVED" } } }),
     prisma.room.findMany(),
-    prisma.tenant.findMany({ where: { status: "ACTIVE" } }),
     prisma.payment.findMany({
       where: { periodYear: year, periodMonth: month },
       include: {

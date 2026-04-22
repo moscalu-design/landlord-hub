@@ -13,12 +13,12 @@ type InventoryItem = {
 
 type InspectionItem = {
   id: string;
-  inventoryItemId: string;
+  inventoryItemId: string | null;
   itemName: string;
   condition: string;
   quantity: number;
   notes: string | null;
-  inventoryItem: InventoryItem;
+  inventoryItem: InventoryItem | null;
 };
 
 type Inspection = {
@@ -70,7 +70,7 @@ function NewInspectionForm({
   const [conditions, setConditions] = useState<Record<string, string>>(() =>
     Object.fromEntries(inventoryItems.map((i) => [i.id, "GOOD"]))
   );
-  const [quantities, setQuantities] = useState<Record<string, number>>(() =>
+  const [quantities] = useState<Record<string, number>>(() =>
     Object.fromEntries(inventoryItems.map((i) => [i.id, i.quantity]))
   );
   const [itemNotes, setItemNotes] = useState<Record<string, string>>({});
@@ -226,7 +226,7 @@ function InspectionCard({
 
   // Build a comparison map: inventoryItemId → check-in condition
   const checkInConditions = compareInspection
-    ? Object.fromEntries(compareInspection.items.map((i) => [i.inventoryItemId, i]))
+    ? Object.fromEntries(compareInspection.items.map((i) => [i.inventoryItemId ?? i.itemName, i]))
     : null;
 
   return (
@@ -259,7 +259,7 @@ function InspectionCard({
       ) : (
         <div className="divide-y divide-slate-100">
           {inspection.items.map((item) => {
-            const prior = checkInConditions?.[item.inventoryItemId];
+            const prior = checkInConditions?.[item.inventoryItemId ?? item.itemName];
             const conditionChanged = prior && prior.condition !== item.condition;
 
             return (

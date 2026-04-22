@@ -40,14 +40,6 @@ function calculatePayment(input: MortgageInput) {
   );
 }
 
-function parseEuroAmount(value: string) {
-  const match = value.match(/-?€[\d,]+(?:\.\d+)?/);
-  if (!match) {
-    throw new Error(`Could not find euro amount in: ${value}`);
-  }
-  return Number(match[0].replace("€", "").replaceAll(",", ""));
-}
-
 async function fillMortgageForm(page: Page, input: MortgageInput) {
   const modal = page.locator('[data-testid="mortgage-add-modal"], [data-testid="mortgage-edit-modal"]').first();
   await expect(modal).toBeVisible();

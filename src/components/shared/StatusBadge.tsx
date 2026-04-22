@@ -6,11 +6,9 @@ import {
   PAYMENT_STATUS_COLORS,
   TENANT_STATUS_LABELS,
   TENANT_STATUS_COLORS,
-  DEPOSIT_STATUS_COLORS,
   type RoomStatus,
   type PaymentStatus,
   type TenantStatus,
-  type DepositStatus,
 } from "@/types";
 
 interface BadgeProps {

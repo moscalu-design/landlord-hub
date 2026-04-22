@@ -362,7 +362,7 @@ model InventoryInspection {
 model InventoryInspectionItem {
   id              String   @id @default(cuid())
   inspectionId    String
-  inventoryItemId String
+  inventoryItemId String?
   itemName        String   // snapshot of name at time of inspection
   condition       String   // NEW | GOOD | FAIR | WORN | DAMAGED | MISSING
   quantity        Int      @default(1)
@@ -371,7 +371,7 @@ model InventoryInspectionItem {
   updatedAt       DateTime @updatedAt
 
   inspection    InventoryInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
-  inventoryItem RoomInventoryItem   @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  inventoryItem RoomInventoryItem?  @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
 
   @@unique([inspectionId, inventoryItemId])
 }

@@ -155,7 +155,6 @@ function ItemForm({
 export function RoomInventoryManager({
   roomId,
   items,
-  activeOccupancyId,
 }: {
   roomId: string;
   items: InventoryItem[];
@@ -218,6 +217,7 @@ export function RoomInventoryManager({
           ) : (
             <div
               key={item.id}
+              data-testid="inventory-item-row"
               className="flex items-start justify-between gap-4 py-3 border-b border-slate-100 last:border-0"
             >
               <div className="flex-1 min-w-0">

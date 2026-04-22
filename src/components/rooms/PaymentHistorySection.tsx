@@ -89,7 +89,7 @@ export function PaymentHistorySection({
                       {payment.payerName}
                     </td>
                     <td className="px-5 py-3 text-slate-700">{formatCurrency(payment.amountDue)}</td>
-                    <td className="px-5 py-3 text-slate-700">
+                    <td className="px-5 py-3 text-slate-700" data-testid="payment-history-paid">
                       {payment.amountPaid > 0 ? formatCurrency(payment.amountPaid) : "—"}
                     </td>
                     <td className="px-5 py-3 text-slate-500">{formatDate(payment.paidAt)}</td>

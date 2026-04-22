@@ -7,7 +7,7 @@ function formatCurrencyValue(amount: string) {
   const numeric = Number(amount);
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
-    currency: "GBP",
+    currency: "EUR",
     minimumFractionDigits: Number.isInteger(numeric) ? 0 : 2,
     maximumFractionDigits: 2,
   }).format(numeric);
@@ -35,16 +35,14 @@ test("record payment flow updates and can be restored on a seeded occupied room"
   const paymentRow = periodLabel
     ? page.getByRole("row", { name: new RegExp(periodLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) })
     : page.locator("tbody tr").first();
+  const paidCell = paymentRow.getByTestId("payment-history-paid");
 
   try {
     monitor.reset();
     await amountInput.fill(updatedAmount);
     await page.locator('select[name="paymentMethod"]').selectOption("OTHER");
     await page.getByRole("button", { name: "Record Payment" }).click();
-    await expect
-      .poll(async () => page.locator('input[name="amountPaid"]').inputValue())
-      .toBe(updatedAmount);
-    await expect(paymentRow).toContainText(formatCurrencyValue(updatedAmount));
+    await expect(paidCell).toContainText(formatCurrencyValue(updatedAmount), { timeout: 15_000 });
     await page.reload({ waitUntil: "networkidle" });
     await expect(page.locator('input[name="amountPaid"]')).toHaveValue(updatedAmount);
     await assertAppHealthy(page, monitor, `payment updated ${roomPath}`);
@@ -53,9 +51,7 @@ test("record payment flow updates and can be restored on a seeded occupied room"
     await page.locator('input[name="amountPaid"]').fill(originalAmount);
     await page.locator('select[name="paymentMethod"]').selectOption("BANK_TRANSFER");
     await page.getByRole("button", { name: "Record Payment" }).click();
-    await expect
-      .poll(async () => page.locator('input[name="amountPaid"]').inputValue())
-      .toBe(originalAmount);
+    await expect(paidCell).toContainText(formatCurrencyValue(originalAmount), { timeout: 15_000 });
     await page.reload({ waitUntil: "networkidle" });
     await expect(page.locator('input[name="amountPaid"]')).toHaveValue(originalAmount);
     await assertAppHealthy(page, monitor, `payment restored ${roomPath}`);

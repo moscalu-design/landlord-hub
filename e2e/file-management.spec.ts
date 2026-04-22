@@ -1,11 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 import { login } from "./helpers/auth";
+import { createTenant, deleteTenant } from "./helpers/crud";
 import { E2E_UPLOAD_TENANT_ID } from "./helpers/env";
 import { assertAppHealthy, attachAppMonitor } from "./helpers/monitor";
 
-async function resolveTenantPath(page: Page) {
+async function resolveTenantPath(page: Page): Promise<{ path: string; created: boolean }> {
   if (E2E_UPLOAD_TENANT_ID) {
-    return `/tenants/${E2E_UPLOAD_TENANT_ID}`;
+    return { path: `/tenants/${E2E_UPLOAD_TENANT_ID}`, created: false };
   }
 
   await page.goto("/tenants", { waitUntil: "networkidle" });
@@ -14,11 +15,12 @@ async function resolveTenantPath(page: Page) {
       .map((node) => (node as HTMLAnchorElement).getAttribute("href"))
       .find((value) => value !== null && value !== "/tenants/new")
   );
-  if (!href) {
-    throw new Error("No tenant detail links available for file-management E2E test.");
+  if (href) {
+    return { path: href, created: false };
   }
 
-  return href;
+  const tenant = await createTenant(page);
+  return { path: new URL(tenant.url).pathname, created: true };
 }
 
 test("document upload, refresh, and delete stay in sync", async ({ page }) => {
@@ -29,30 +31,37 @@ test("document upload, refresh, and delete stay in sync", async ({ page }) => {
   await login(page);
   monitor.reset();
 
-  const tenantPath = await resolveTenantPath(page);
-  await page.goto(tenantPath, { waitUntil: "networkidle" });
-  await assertAppHealthy(page, monitor, `tenant detail ${tenantPath}`);
+  const tenant = await resolveTenantPath(page);
 
-  const slot = page.getByTestId("document-slot-idDocument");
-  const fileInput = page.getByTestId("document-input-idDocument");
-  await expect(fileInput).toBeAttached();
-  await fileInput.setInputFiles({
-    name: uniqueName,
-    mimeType: "application/pdf",
-    buffer: Buffer.from("e2e document"),
-  });
+  try {
+    await page.goto(tenant.path, { waitUntil: "networkidle" });
+    await assertAppHealthy(page, monitor, `tenant detail ${tenant.path}`);
 
-  await expect(slot.getByText(uniqueName)).toBeVisible({ timeout: 15_000 });
-  await assertAppHealthy(page, monitor, "after document upload");
+    const slot = page.getByTestId("document-slot-idDocument");
+    const fileInput = page.getByTestId("document-input-idDocument");
+    await expect(fileInput).toBeAttached();
+    await fileInput.setInputFiles({
+      name: uniqueName,
+      mimeType: "application/pdf",
+      buffer: Buffer.from("e2e document"),
+    });
 
-  monitor.reset();
-  await page.reload({ waitUntil: "networkidle" });
-  await expect(slot.getByText(uniqueName)).toBeVisible({ timeout: 15_000 });
-  await assertAppHealthy(page, monitor, "after tenant reload");
+    await expect(slot.getByText(uniqueName)).toBeVisible({ timeout: 15_000 });
+    await assertAppHealthy(page, monitor, "after document upload");
 
-  monitor.reset();
-  await slot.getByTitle("Delete").click();
-  await slot.getByRole("button", { name: "Yes" }).click();
-  await expect(slot.getByText(uniqueName)).toHaveCount(0, { timeout: 15_000 });
-  await assertAppHealthy(page, monitor, "after document delete");
+    monitor.reset();
+    await page.reload({ waitUntil: "networkidle" });
+    await expect(slot.getByText(uniqueName)).toBeVisible({ timeout: 15_000 });
+    await assertAppHealthy(page, monitor, "after tenant reload");
+
+    monitor.reset();
+    await slot.getByTitle("Delete").click();
+    await slot.getByRole("button", { name: "Yes" }).click();
+    await expect(slot.getByText(uniqueName)).toHaveCount(0, { timeout: 15_000 });
+    await assertAppHealthy(page, monitor, "after document delete");
+  } finally {
+    if (tenant.created) {
+      await deleteTenant(page, tenant.path);
+    }
+  }
 });

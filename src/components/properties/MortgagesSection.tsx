@@ -1193,28 +1193,24 @@ function MortgageDetailsModal({
   const baselineOverview = getMortgageOverview(mortgage, "baseline");
   const schedule = getMortgageSchedule(mortgage, "actual");
   const type = normalizeMortgageType(mortgage.type);
+  const hasActualPrepayments = (mortgage.prepayments?.length ?? 0) > 0;
+  const effectiveAnnualMode =
+    !hasActualPrepayments && annualMode === "actual" ? "baseline" : annualMode;
   const balanceData = useMemo(
     () => getMortgageBalanceComparisonData(mortgage, scenario),
     [mortgage, scenario]
   );
   const annualData = useMemo(() => {
     const mode: MortgageScheduleMode =
-      annualMode === "simulation" ? "simulation" : annualMode;
+      effectiveAnnualMode === "simulation" ? "simulation" : effectiveAnnualMode;
     return getMortgageAnnualData(
       mortgage,
       mode,
-      annualMode === "simulation" ? scenario : undefined
+      effectiveAnnualMode === "simulation" ? scenario : undefined
     );
-  }, [annualMode, mortgage, scenario]);
+  }, [effectiveAnnualMode, mortgage, scenario]);
   const simulation = scenario ? simulateMortgageScenario(mortgage, scenario) : null;
-  const hasActualPrepayments = (mortgage.prepayments?.length ?? 0) > 0;
   const balloonExcluded = annualData.some((entry) => entry.balloonPrincipalExcluded > 0);
-
-  useEffect(() => {
-    if (!hasActualPrepayments) {
-      setAnnualMode("baseline");
-    }
-  }, [hasActualPrepayments]);
 
   function updateSimulationField(field: keyof SimulationFormState, value: string) {
     setSimulationState((current) => ({ ...current, [field]: value }));
@@ -1449,7 +1445,7 @@ function MortgageDetailsModal({
                     type="button"
                     onClick={() => setAnnualMode("baseline")}
                     className={`px-3 py-1.5 rounded-lg border ${
-                      annualMode === "baseline"
+                      effectiveAnnualMode === "baseline"
                         ? "border-slate-300 bg-slate-100 text-slate-700"
                         : "border-slate-200 text-slate-500"
                     }`}
@@ -1460,7 +1456,7 @@ function MortgageDetailsModal({
                     type="button"
                     onClick={() => setAnnualMode("actual")}
                     className={`px-3 py-1.5 rounded-lg border ${
-                      annualMode === "actual"
+                      effectiveAnnualMode === "actual"
                         ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                         : "border-slate-200 text-slate-500"
                     }`}
@@ -1472,7 +1468,7 @@ function MortgageDetailsModal({
                       type="button"
                       onClick={() => setAnnualMode("simulation")}
                       className={`px-3 py-1.5 rounded-lg border ${
-                        annualMode === "simulation"
+                        effectiveAnnualMode === "simulation"
                           ? "border-blue-200 bg-blue-50 text-blue-700"
                           : "border-slate-200 text-slate-500"
                       }`}

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { readStoredDocument, storeDocument, deleteStoredDocument } from "../documentStorage";
 
 describe("documentStorage local fallback", () => {
@@ -7,7 +7,7 @@ describe("documentStorage local fallback", () => {
 
   afterEach(async () => {
     process.env.BLOB_READ_WRITE_TOKEN = originalBlobToken;
-    process.env.NODE_ENV = originalNodeEnv;
+    vi.stubEnv("NODE_ENV", originalNodeEnv);
 
     await deleteStoredDocument("local://tenant-documents/test-tenant/idDocument.pdf").catch(
       () => undefined
@@ -16,7 +16,7 @@ describe("documentStorage local fallback", () => {
 
   it("stores, reads, replaces, and deletes a local document when blob storage is unavailable", async () => {
     process.env.BLOB_READ_WRITE_TOKEN = "";
-    process.env.NODE_ENV = "development";
+    vi.stubEnv("NODE_ENV", "development");
 
     const first = await storeDocument(
       "tenant-documents/test-tenant/idDocument.pdf",

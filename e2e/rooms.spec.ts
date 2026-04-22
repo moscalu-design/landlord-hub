@@ -17,7 +17,6 @@ test("room CRUD flow creates, edits, navigates, and deletes safely inside a test
   const monitor = attachAppMonitor(page);
   let propertyUrl: string | null = null;
   let roomUrl: string | null = null;
-  let roomName = "";
 
   await login(page);
   monitor.reset();
@@ -36,7 +35,6 @@ test("room CRUD flow creates, edits, navigates, and deletes safely inside a test
 
     const room = await createRoom(page, property.id);
     roomUrl = room.url;
-    roomName = room.name;
     await assertAppHealthy(page, monitor, "room created");
 
     monitor.reset();

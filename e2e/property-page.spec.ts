@@ -62,14 +62,14 @@ test("overview and costs routes support quick add and stay in sync", async ({ pa
     expect(costsY).toBeLessThan(roomsY);
 
     monitor.reset();
-    await page.getByRole("link", { name: "Costs" }).click();
+    await page.locator(`a[href="/properties/${property.id}/costs"]`).first().click();
     await expect(page).toHaveURL(new RegExp(`/properties/${property.id}/costs$`));
     await expect(page.getByTestId("costs-empty-helper")).toBeVisible();
     await expect(page.getByTestId("quick-add-cost-button")).toBeVisible();
     await assertAppHealthy(page, monitor, "costs page empty state renders");
 
     monitor.reset();
-    await page.getByRole("link", { name: "Overview" }).click();
+    await page.locator(`a[href="/properties/${property.id}"]`).first().click();
     await expect(page).toHaveURL(new RegExp(`/properties/${property.id}$`));
     await page.getByTestId("quick-add-cost-button").click();
     await expect(page.getByTestId("quick-add-cost-modal")).toBeVisible();
@@ -84,7 +84,7 @@ test("overview and costs routes support quick add and stay in sync", async ({ pa
       .toBe(-42);
 
     monitor.reset();
-    await page.getByRole("link", { name: "Costs" }).click();
+    await page.locator(`a[href="/properties/${property.id}/costs"]`).first().click();
     await expect(page).toHaveURL(new RegExp(`/properties/${property.id}/costs$`));
     await expect(page.getByTestId("quick-add-cost-button")).toBeVisible();
     await expect(page.getByTestId("property-expenses-section")).toContainText("€42");

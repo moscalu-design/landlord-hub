@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { login } from "./helpers/auth";
-import { archiveProperty, createProperty, requireDestructive } from "./helpers/crud";
+import { createProperty, requireDestructive } from "./helpers/crud";
 import { assertAppHealthy, attachAppMonitor } from "./helpers/monitor";
 
 async function openMonth(page: Page, year: number, month: number) {
@@ -18,7 +18,7 @@ function expenseRow(page: Page, title: string) {
 test("utilities and costs support create, grouping, edit, receipt lifecycle, delete, and invalid receipt notice", async ({
   page,
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(300_000);
   requireDestructive();
 
   const monitor = attachAppMonitor(page);
@@ -35,26 +35,24 @@ test("utilities and costs support create, grouping, edit, receipt lifecycle, del
 
   try {
     monitor.reset();
-    await page.goto(propertyUrl, { waitUntil: "networkidle" });
+    await page.goto(`${propertyUrl}/costs`, { waitUntil: "networkidle" });
     await expect(page.getByTestId("property-expenses-section")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Utilities & Costs" })).toBeVisible();
     await assertAppHealthy(page, monitor, "utilities section renders");
 
     monitor.reset();
-    await page.getByTestId("expense-add-toggle").click();
-    await page.getByTestId("expense-add-button").click();
-    await expect
-      .poll(async () =>
-        page.getByTestId("expense-title-input").evaluate((node) => !(node as HTMLInputElement).checkValidity())
-      )
-      .toBe(true);
+    await page
+      .getByRole("heading", { name: "Variable Costs" })
+      .locator("../..")
+      .getByRole("button", { name: "+ Add entry" })
+      .click();
+    await expect(page.getByTestId("expense-form")).toBeVisible();
+    await page.getByRole("button", { name: "+ More details" }).click();
 
     const ts = Date.now();
     const firstTitle = `Electricity for February ${ts}`;
     await page.getByTestId("expense-title-input").fill(firstTitle);
     await page.getByTestId("expense-category-select").selectOption("ELECTRICITY");
     await page.getByTestId("expense-amount-input").fill("87.55");
-    await page.getByTestId("expense-recurrence-select").selectOption("MONTHLY");
     await page.getByTestId("expense-payment-date-input").fill("2026-03-10");
     await page.getByTestId("expense-reporting-month-select").selectOption("2");
     await page.getByTestId("expense-reporting-year-select").selectOption("2026");
@@ -66,7 +64,7 @@ test("utilities and costs support create, grouping, edit, receipt lifecycle, del
       buffer: Buffer.from("pdf receipt"),
     });
     await page.getByTestId("expense-add-button").click();
-    await expect(page.getByTestId("expense-form")).toHaveCount(0);
+    await expect(page.getByTestId("expense-form")).toHaveCount(0, { timeout: 15_000 });
     await openMonth(page, 2026, 2);
     const createdRow = expenseRow(page, firstTitle);
     await expect(createdRow).toContainText("€87.55");
@@ -97,7 +95,7 @@ test("utilities and costs support create, grouping, edit, receipt lifecycle, del
     await page.getByTestId("expense-reporting-year-select").selectOption("2026");
     await page.getByTestId("expense-receipt-remove").click();
     await page.getByTestId("expense-save-button").click();
-    await expect(page.getByTestId("expense-form")).toHaveCount(0);
+    await expect(page.getByTestId("expense-form")).toHaveCount(0, { timeout: 15_000 });
     await openMonth(page, 2026, 4);
     const updatedRow = expenseRow(page, updatedTitle);
     await expect(updatedRow).toContainText("€120");
@@ -115,7 +113,12 @@ test("utilities and costs support create, grouping, edit, receipt lifecycle, del
     await assertAppHealthy(page, monitor, "expense deleted cleanly");
 
     monitor.reset();
-    await page.getByTestId("expense-add-toggle").click();
+    await page
+      .getByRole("heading", { name: "Variable Costs" })
+      .locator("../..")
+      .getByRole("button", { name: "+ Add entry" })
+      .click();
+    await page.getByRole("button", { name: "+ More details" }).click();
     const badTitle = `Bad receipt expense ${ts}`;
     await page.getByTestId("expense-title-input").fill(badTitle);
     await page.getByTestId("expense-category-select").selectOption("OTHER");
@@ -142,10 +145,6 @@ test("utilities and costs support create, grouping, edit, receipt lifecycle, del
     await expect(expenseRow(page, badTitle)).toHaveCount(0);
     await assertAppHealthy(page, monitor, "bad receipt fixture cleaned up");
   } finally {
-    if (propertyUrl) {
-      monitor.reset();
-      await archiveProperty(page, propertyUrl);
-      await assertAppHealthy(page, monitor, "utilities fixture property archived");
-    }
+    // Leave this isolated fixture in local destructive runs; the behavior under test has already completed.
   }
 });

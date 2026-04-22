@@ -75,7 +75,10 @@ export function RecordPaymentForm({
       </div>
 
       {selectedPayment && (
-        <div className="bg-slate-50 rounded-lg px-3 py-2.5 flex justify-between text-sm">
+        <div
+          data-testid="selected-payment-summary"
+          className="bg-slate-50 rounded-lg px-3 py-2.5 flex justify-between text-sm"
+        >
           <span className="text-slate-600">
             Due: {formatCurrency(selectedPayment.amountDue)}
           </span>

@@ -18,7 +18,7 @@ export default function NewTenantPage() {
           </Link>
         }
       />
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-4 sm:p-6">
         <TenantForm />
       </div>
     </div>

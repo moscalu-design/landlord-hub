@@ -10,6 +10,7 @@ import { buildChartData } from "@/components/properties/propertyPerformanceData"
 import { RoomStatusBadge } from "@/components/shared/StatusBadge";
 import { getMonthlyCostForMonth } from "@/lib/mortgage";
 import { getExpenseTotalForMonth } from "@/lib/expenses";
+import { getDisplayRoomStatus, summarizeRooms } from "@/lib/roomOccupancy";
 import prisma from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -76,15 +77,8 @@ export default async function PropertyDetailPage({
 
   if (!property) notFound();
 
-  const totalRooms = property.rooms.length;
-  const vacantRooms = property.rooms.filter((r) => r.status === "VACANT").length;
-  const occupancyRate =
-    totalRooms > 0 ? Math.round(((totalRooms - vacantRooms) / totalRooms) * 100) : 0;
-
-  // Monthly income = sum of rent for occupied rooms (contracted, current month)
-  const monthlyIncome = property.rooms
-    .filter((r) => r.status === "OCCUPIED")
-    .reduce((sum, r) => sum + r.monthlyRent, 0);
+  const { totalRooms, occupiedRooms, vacantRooms, monthlyIncome } = summarizeRooms(property.rooms);
+  const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
 
   // Monthly costs = expenses for this month (recurring + one-off) + active mortgage payments
   const monthlyExpenses = getExpenseTotalForMonth(property.expenses, thisYear, thisMonth);
@@ -103,6 +97,8 @@ export default async function PropertyDetailPage({
       <TopBar
         title={property.name}
         description={`${property.address}, ${property.city}`}
+        backHref="/properties"
+        backLabel="All properties"
         actions={
           <>
             <ArchivePropertyForm propertyId={id} />
@@ -116,43 +112,43 @@ export default async function PropertyDetailPage({
         }
       />
 
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-4 sm:p-6 space-y-6">
         <PropertySubnav propertyId={id} active="overview" />
 
         {/* ── Summary cards ─────────────────────────────────────────────── */}
-        <div data-testid="property-summary-cards" className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div data-testid="property-summary-cards" className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <div data-testid="property-summary-total-rooms" className="bg-white border border-slate-200 rounded-xl px-4 py-4">
-            <p className="text-2xl font-bold text-slate-900">{totalRooms}</p>
-            <p className="text-xs text-slate-500 mt-0.5">Total Rooms</p>
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Rooms</p>
+            <p className="text-2xl font-bold text-slate-900 mt-1">{totalRooms}</p>
           </div>
 
           <div data-testid="property-summary-vacant" className="bg-white border border-slate-200 rounded-xl px-4 py-4">
-            <p className="text-2xl font-bold text-slate-900">{vacantRooms}</p>
-            <p className="text-xs text-slate-500 mt-0.5">Vacant</p>
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Vacant</p>
+            <p className="text-2xl font-bold text-slate-900 mt-1">{vacantRooms}</p>
             {totalRooms > 0 && (
-              <p className="text-xs text-slate-400 mt-0.5">{occupancyRate}% occupied</p>
+              <p className="text-xs text-slate-400 mt-1">{occupancyRate}% occupied</p>
             )}
           </div>
 
           <div data-testid="property-summary-income" className="bg-white border border-slate-200 rounded-xl px-4 py-4">
-            <p className="text-2xl font-bold text-slate-900">
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Monthly Income</p>
+            <p className="text-2xl font-bold text-slate-900 mt-1">
               {formatCurrency(monthlyIncome)}
             </p>
-            <p className="text-xs text-slate-500 mt-0.5">Monthly Income</p>
-            <p className="text-xs text-slate-400 mt-0.5">contracted rent</p>
+            <p className="text-xs text-slate-400 mt-1">contracted rent</p>
           </div>
 
           <div data-testid="property-summary-profit" className="bg-white border border-slate-200 rounded-xl px-4 py-4">
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Monthly Profit</p>
             <p
               data-testid="property-summary-profit-value"
-              className={`text-2xl font-bold ${
+              className={`text-2xl font-bold mt-1 ${
                 monthlyProfit >= 0 ? "text-emerald-600" : "text-red-500"
               }`}
             >
               {formatCurrency(monthlyProfit)}
             </p>
-            <p className="text-xs text-slate-500 mt-0.5">Monthly Profit</p>
-            <p className="text-xs text-slate-400 mt-0.5">income − costs</p>
+            <p className="text-xs text-slate-400 mt-1">income − costs</p>
           </div>
         </div>
 
@@ -200,17 +196,17 @@ export default async function PropertyDetailPage({
                     key={room.id}
                     href={`/rooms/${room.id}`}
                     data-testid="room-link"
-                    className="flex items-center justify-between bg-white border border-slate-200 rounded-xl px-5 py-3.5 hover:border-blue-300 hover:shadow-sm transition group"
+                    className="flex items-center justify-between gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3.5 sm:px-5 hover:border-blue-300 hover:shadow-sm transition group"
                   >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-medium text-slate-800 group-hover:text-blue-600 transition-colors">
                           {room.name}
                         </h3>
-                        <RoomStatusBadge status={room.status} size="sm" />
+                        <RoomStatusBadge status={getDisplayRoomStatus(room)} size="sm" />
                       </div>
                       {activeOccupancy ? (
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-xs text-slate-500 mt-0.5 truncate">
                           {activeOccupancy.tenant.firstName}{" "}
                           {activeOccupancy.tenant.lastName}
                           {" · "}Since {formatDate(activeOccupancy.leaseStart)}
@@ -220,7 +216,7 @@ export default async function PropertyDetailPage({
                       )}
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0 ml-4">
+                    <div className="flex items-center gap-3 shrink-0">
                       <div className="text-right">
                         <p className="text-sm font-semibold text-slate-800">
                           {formatCurrency(room.monthlyRent)}
@@ -229,7 +225,7 @@ export default async function PropertyDetailPage({
                       </div>
                       {currentPayment && (
                         <span
-                          className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                          className={`hidden sm:inline-flex text-xs font-medium px-2 py-0.5 rounded-full ${
                             currentPayment.status === "PAID"
                               ? "bg-green-100 text-green-800"
                               : currentPayment.status === "OVERDUE"

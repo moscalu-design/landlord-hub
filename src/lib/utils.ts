@@ -35,6 +35,11 @@ export function formatDateTime(date: Date | string | null | undefined): string {
   return format(new Date(date), "dd MMM yyyy, HH:mm");
 }
 
+export function toDateInputValue(date: Date | string | null | undefined): string {
+  if (!date) return "";
+  return format(new Date(date), "yyyy-MM-dd");
+}
+
 // ─── Payment status computation ────────────────────────────────────────────────
 
 export function computePaymentStatus(payment: {

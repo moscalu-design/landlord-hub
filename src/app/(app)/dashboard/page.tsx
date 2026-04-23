@@ -2,6 +2,7 @@ import Link from "next/link";
 import { TopBar } from "@/components/layout/TopBar";
 import { StatCard } from "@/components/shared/StatCard";
 import { PaymentStatusBadge } from "@/components/shared/StatusBadge";
+import { summarizeRooms } from "@/lib/roomOccupancy";
 import prisma from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -17,7 +18,15 @@ async function getDashboardData() {
     recentActivity,
   ] = await Promise.all([
     prisma.property.findMany({ where: { status: { not: "ARCHIVED" } } }),
-    prisma.room.findMany(),
+    prisma.room.findMany({
+      where: { property: { status: { not: "ARCHIVED" } } },
+      include: {
+        occupancies: {
+          where: { status: "ACTIVE" },
+          select: { status: true, monthlyRent: true },
+        },
+      },
+    }),
     prisma.payment.findMany({
       where: { periodYear: year, periodMonth: month },
       include: {
@@ -37,9 +46,7 @@ async function getDashboardData() {
     }),
   ]);
 
-  const totalRooms = rooms.length;
-  const occupiedRooms = rooms.filter((r) => r.status === "OCCUPIED").length;
-  const vacantRooms = rooms.filter((r) => r.status === "VACANT").length;
+  const { totalRooms, occupiedRooms, vacantRooms } = summarizeRooms(rooms);
 
   const rentDue = currentMonthPayments
     .filter((p) => ["UNPAID", "PARTIAL", "OVERDUE"].includes(p.status))
@@ -77,7 +84,7 @@ export default async function DashboardPage() {
         description={`Overview for ${monthName} ${data.year}`}
       />
 
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-4 sm:p-6 space-y-6">
         {/* Stats grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
@@ -120,7 +127,10 @@ export default async function DashboardPage() {
                 <p className="text-sm text-slate-500 text-center py-8">No payments this month</p>
               ) : (
                 data.currentMonthPayments.slice(0, 6).map((payment) => (
-                  <div key={payment.id} className="flex items-center justify-between px-5 py-3">
+                  <div
+                    key={payment.id}
+                    className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5"
+                  >
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-slate-800 truncate">
                         {payment.occupancy.tenant.firstName} {payment.occupancy.tenant.lastName}
@@ -166,13 +176,13 @@ export default async function DashboardPage() {
           {[
             { href: "/properties/new", label: "Add Property" },
             { href: "/tenants/new", label: "Add Tenant" },
-            { href: "/payments", label: "Record Payment" },
-            { href: "/properties", label: "View Rooms" },
+            { href: "/payments", label: "Rent Ledger" },
+            { href: "/properties", label: "Portfolio" },
           ].map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:border-blue-300 hover:text-blue-600 transition-colors text-center"
+              className="bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-medium text-slate-700 hover:border-blue-300 hover:text-blue-600 hover:shadow-sm transition text-center"
             >
               {link.label}
             </Link>

@@ -27,6 +27,13 @@ type Inspection = {
   date: Date | string;
   notes: string | null;
   items: InspectionItem[];
+  photos: {
+    id: string;
+    fileName: string;
+    fileSize: number;
+    fileType: string;
+    uploadedAt: Date | string;
+  }[];
 };
 
 type Occupancy = {
@@ -54,6 +61,29 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function uploadInspectionPhotos(inspectionId: string, files: File[]) {
+  for (const file of files) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(`/api/inspections/${inspectionId}/photos`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const json = await response.json().catch(() => ({}));
+      throw new Error(json.error ?? `Photo upload failed for ${file.name}.`);
+    }
+  }
+}
+
 function NewInspectionForm({
   roomId,
   occupancyId,
@@ -77,6 +107,7 @@ function NewInspectionForm({
   const [type, setType] = useState<"CHECK_IN" | "CHECK_OUT">("CHECK_IN");
   const [date, setDate] = useState(todayStr());
   const [notes, setNotes] = useState("");
+  const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -87,7 +118,7 @@ function NewInspectionForm({
     setPending(true);
     setError(null);
     try {
-      await createInspection(occupancyId, roomId, {
+      const created = await createInspection(occupancyId, roomId, {
         inspection: { type, date, notes: notes || undefined },
         items: inventoryItems.map((item) => ({
           inventoryItemId: item.id,
@@ -97,6 +128,18 @@ function NewInspectionForm({
           notes: itemNotes[item.id] || undefined,
         })),
       });
+
+      if (selectedPhotos.length > 0) {
+        try {
+          await uploadInspectionPhotos(created.id, selectedPhotos);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Inspection saved, but photo upload failed.";
+          window.alert(`${message} The inspection itself was saved. You can add photos to it afterward.`);
+          onDone();
+          return;
+        }
+      }
+
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -182,6 +225,32 @@ function NewInspectionForm({
         />
       </div>
 
+      <div>
+        <label className="block text-xs font-medium text-slate-600 mb-1">
+          Photos <span className="text-slate-400 font-normal">optional</span>
+        </label>
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          capture="environment"
+          onChange={(e) => setSelectedPhotos(Array.from(e.target.files ?? []))}
+          className="block w-full text-sm text-slate-700 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100"
+        />
+        <p className="mt-1 text-xs text-slate-500">
+          Add multiple images from your phone camera or photo library. Max 4 MB per image.
+        </p>
+        {selectedPhotos.length > 0 && (
+          <ul className="mt-2 space-y-1 text-xs text-slate-600">
+            {selectedPhotos.map((file) => (
+              <li key={`${file.name}-${file.lastModified}`}>
+                {file.name} · {formatBytes(file.size)}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       <div className="flex items-center gap-3">
         <button
           type="submit"
@@ -200,6 +269,121 @@ function NewInspectionForm({
         </button>
       </div>
     </form>
+  );
+}
+
+function InspectionPhotos({
+  inspectionId,
+  photos,
+}: {
+  inspectionId: string;
+  photos: Inspection["photos"];
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleAddPhotos(files: FileList | null) {
+    const list = Array.from(files ?? []);
+    if (list.length === 0) return;
+
+    setUploading(true);
+    setError(null);
+    try {
+      await uploadInspectionPhotos(inspectionId, list);
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to upload photos.");
+      setUploading(false);
+    }
+  }
+
+  async function handleDeletePhoto(photoId: string) {
+    if (!confirm("Remove this inspection photo?")) return;
+
+    setDeletingId(photoId);
+    setError(null);
+    try {
+      const response = await fetch(`/api/inspection-photos/${photoId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const json = await response.json().catch(() => ({}));
+        throw new Error(json.error ?? "Failed to delete photo.");
+      }
+
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete photo.");
+      setDeletingId(null);
+    }
+  }
+
+  return (
+    <div className="px-4 py-3 border-b border-slate-100 space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-medium text-slate-600">Photos</p>
+          <p className="text-xs text-slate-500">
+            Add more inspection images later if needed.
+          </p>
+        </div>
+        <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50">
+          {uploading ? "Uploading…" : "+ Add photos"}
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            capture="environment"
+            className="sr-only"
+            disabled={uploading}
+            onChange={(e) => {
+              void handleAddPhotos(e.target.files);
+              e.currentTarget.value = "";
+            }}
+          />
+        </label>
+      </div>
+
+      {error && (
+        <p className="text-xs text-red-600">{error}</p>
+      )}
+
+      {photos.length === 0 ? (
+        <p className="text-xs text-slate-400">No photos attached.</p>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {photos.map((photo) => (
+            <div key={photo.id} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <a href={`/api/inspection-photos/${photo.id}`} target="_blank" rel="noreferrer">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`/api/inspection-photos/${photo.id}`}
+                  alt={photo.fileName}
+                  className="h-28 w-full object-cover"
+                  loading="lazy"
+                />
+              </a>
+              <div className="space-y-1 px-2 py-2">
+                <p className="truncate text-xs font-medium text-slate-700">{photo.fileName}</p>
+                <p className="text-[11px] text-slate-400">
+                  {formatBytes(photo.fileSize)} · {formatDate(photo.uploadedAt)}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void handleDeletePhoto(photo.id)}
+                  disabled={deletingId === photo.id}
+                  className="text-[11px] font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                >
+                  {deletingId === photo.id ? "Removing…" : "Remove"}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -253,6 +437,8 @@ function InspectionCard({
       {inspection.notes && (
         <p className="px-4 py-2 text-xs text-slate-500 border-b border-slate-100">{inspection.notes}</p>
       )}
+
+      <InspectionPhotos inspectionId={inspection.id} photos={inspection.photos} />
 
       {inspection.items.length === 0 ? (
         <p className="px-4 py-4 text-xs text-slate-400">No items recorded.</p>

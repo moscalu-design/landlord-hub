@@ -25,6 +25,9 @@ export default async function RoomInventoryPage({
           tenant: true,
           inspections: {
             include: {
+              photos: {
+                orderBy: { uploadedAt: "asc" },
+              },
               items: {
                 include: { inventoryItem: true },
                 orderBy: { createdAt: "asc" },

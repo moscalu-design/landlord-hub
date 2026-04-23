@@ -13,6 +13,7 @@ import {
 import { DeleteRoomForm } from "@/components/rooms/DeleteRoomForm";
 import { EndTenancyForm } from "@/components/rooms/EndTenancyForm";
 import { summarizeDepositTransactions } from "@/lib/depositUtils";
+import { getDisplayRoomStatus } from "@/lib/roomOccupancy";
 import prisma from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -84,9 +85,17 @@ export default async function RoomDetailPage({
       <TopBar
         title={room.name}
         description={`${room.property.name} · ${room.property.address}`}
+        backHref={`/properties/${room.propertyId}`}
+        backLabel={room.property.name}
         actions={
-          <div className="flex items-center gap-2">
-            <RoomStatusBadge status={room.status} />
+          <>
+            <RoomStatusBadge
+              status={getDisplayRoomStatus({
+                status: room.status,
+                monthlyRent: room.monthlyRent,
+                occupancies: activeOccupancy ? [{ status: "ACTIVE", monthlyRent: activeOccupancy.monthlyRent }] : [],
+              })}
+            />
             {!activeOccupancy && (
               <DeleteRoomForm roomId={id} propertyId={room.propertyId} />
             )}
@@ -109,38 +118,41 @@ export default async function RoomDetailPage({
             >
               Edit Room
             </Link>
-          </div>
+          </>
         }
       />
 
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-4 sm:p-6 space-y-6">
         {/* Room info strip */}
-        <div data-testid="room-info-strip" className="flex items-center gap-6 bg-white border border-slate-200 rounded-xl px-5 py-4">
-          <div>
+        <div
+          data-testid="room-info-strip"
+          className="grid grid-cols-2 gap-4 bg-white border border-slate-200 rounded-xl px-4 py-4 sm:flex sm:flex-wrap sm:items-center sm:gap-6 sm:px-5"
+        >
+          <div className="min-w-0">
             <p className="text-xs text-slate-500">Monthly Rent</p>
             <p className="text-base font-bold text-slate-800">{formatCurrency(room.monthlyRent)}</p>
           </div>
-          <div className="w-px h-8 bg-slate-200" />
-          <div>
+          <div className="hidden sm:block w-px h-8 bg-slate-200" />
+          <div className="min-w-0">
             <p className="text-xs text-slate-500">Deposit</p>
             <p data-testid="room-default-deposit-value" className="text-base font-bold text-slate-800">{formatCurrency(room.depositAmount)}</p>
           </div>
           {room.sizeM2 && (
             <>
-              <div className="w-px h-8 bg-slate-200" />
-              <div>
+              <div className="hidden sm:block w-px h-8 bg-slate-200" />
+              <div className="min-w-0">
                 <p className="text-xs text-slate-500">Size</p>
                 <p className="text-base font-bold text-slate-800">{room.sizeM2} m²</p>
               </div>
             </>
           )}
-          <div className="w-px h-8 bg-slate-200" />
-          <div>
+          <div className="hidden sm:block w-px h-8 bg-slate-200" />
+          <div className="min-w-0">
             <p className="text-xs text-slate-500">Furnished</p>
             <p className="text-base font-bold text-slate-800">{room.furnished ? "Yes" : "No"}</p>
           </div>
-          <div className="w-px h-8 bg-slate-200" />
-          <div>
+          <div className="hidden sm:block w-px h-8 bg-slate-200" />
+          <div className="min-w-0">
             <p className="text-xs text-slate-500">Private Bathroom</p>
             <p className="text-base font-bold text-slate-800">{room.privateBathroom ? "Yes" : "No"}</p>
           </div>
@@ -153,7 +165,16 @@ export default async function RoomDetailPage({
             <div data-testid="room-current-tenant-card" className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-slate-800">Current Tenant</h2>
-                <EndTenancyForm occupancyId={activeOccupancy.id} />
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/rooms/${id}/occupancies/${activeOccupancy.id}/edit`}
+                    data-testid="edit-occupancy-link"
+                    className="text-sm font-medium text-slate-600 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+                  >
+                    Edit Tenancy
+                  </Link>
+                  <EndTenancyForm occupancyId={activeOccupancy.id} />
+                </div>
               </div>
 
               <div className="flex items-center gap-3">

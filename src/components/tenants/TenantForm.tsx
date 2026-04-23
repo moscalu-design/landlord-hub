@@ -23,10 +23,10 @@ export function TenantForm({ tenant }: { tenant?: Tenant }) {
   return (
     <form action={action} className="space-y-6 max-w-2xl">
       {/* Personal Details */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+      <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 space-y-4">
         <h2 className="text-sm font-semibold text-slate-700">Personal Details</h2>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
               First Name <span className="text-red-500">*</span>
@@ -122,10 +122,10 @@ export function TenantForm({ tenant }: { tenant?: Tenant }) {
       </div>
 
       {/* ID & Documents */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+      <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 space-y-4">
         <h2 className="text-sm font-semibold text-slate-700">ID &amp; Documents</h2>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">ID Type</label>
             <select
@@ -153,7 +153,7 @@ export function TenantForm({ tenant }: { tenant?: Tenant }) {
       </div>
 
       {/* Notes */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6">
+      <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6">
         <label className="block text-sm font-semibold text-slate-700 mb-2">Notes</label>
         <textarea
           name="notes"

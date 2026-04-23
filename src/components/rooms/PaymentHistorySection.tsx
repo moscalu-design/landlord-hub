@@ -66,7 +66,45 @@ export function PaymentHistorySection({
         </p>
       ) : (
         <>
-          <div className="overflow-x-auto">
+          <div className="divide-y divide-slate-100 md:hidden">
+            {visiblePayments.map((payment) => (
+              <div key={payment.id} className="px-4 py-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800">
+                      {formatMonthYear(payment.periodYear, payment.periodMonth)}
+                    </p>
+                    <p className="truncate text-xs text-slate-500">{payment.payerName}</p>
+                  </div>
+                  <PaymentStatusBadge status={computePaymentStatus(payment)} size="sm" />
+                </div>
+                <dl className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <dt className="text-xs text-slate-500">Due</dt>
+                    <dd className="mt-1 font-medium text-slate-800">{formatCurrency(payment.amountDue)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-500">Paid</dt>
+                    <dd className="mt-1 font-medium text-slate-800">
+                      {payment.amountPaid > 0 ? formatCurrency(payment.amountPaid) : "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-500">Date Paid</dt>
+                    <dd className="mt-1 text-slate-700">{formatDate(payment.paidAt)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-500">Method</dt>
+                    <dd className="mt-1 text-slate-700">
+                      {payment.paymentMethod?.replaceAll("_", " ") ?? "—"}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100">
@@ -105,12 +143,12 @@ export function PaymentHistorySection({
             </table>
           </div>
 
-          <div className="px-5 py-4 border-t border-slate-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="px-4 py-4 border-t border-slate-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <p className="text-xs text-slate-500">
               Showing {startIndex}-{endIndex} of {payments.length}
             </p>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-2 sm:justify-start">
               <button
                 type="button"
                 data-testid="payment-history-prev"

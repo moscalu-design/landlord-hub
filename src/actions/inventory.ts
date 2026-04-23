@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { deleteStoredDocument } from "@/lib/documentStorage";
 import prisma from "@/lib/prisma";
 import {
   InventoryItemSchema,
@@ -166,6 +167,23 @@ export async function deleteInspection(
   roomId: string
 ): Promise<void> {
   await requireAuth();
+  const inspection = await prisma.inventoryInspection.findUnique({
+    where: { id },
+    include: { photos: true },
+  });
+
+  if (!inspection) {
+    return;
+  }
+
+  for (const photo of inspection.photos) {
+    try {
+      await deleteStoredDocument(photo.storageUrl);
+    } catch {
+      // Best-effort — continue deleting the inspection record
+    }
+  }
+
   await prisma.inventoryInspection.delete({ where: { id } });
   revalidatePath(`/rooms/${roomId}/inventory`);
 }

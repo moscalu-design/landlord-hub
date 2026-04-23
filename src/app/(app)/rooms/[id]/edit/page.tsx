@@ -40,7 +40,7 @@ export default async function EditRoomPage({
           </>
         }
       />
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-4 sm:p-6">
         <RoomForm propertyId={room.propertyId} room={room} />
       </div>
     </div>

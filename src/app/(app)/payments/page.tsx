@@ -67,9 +67,9 @@ export default async function PaymentsPage({
         description={`${formatMonthYear(year, month)} rent ledger`}
       />
 
-      <div className="flex-1 p-6 space-y-5">
+      <div className="flex-1 p-4 sm:p-6 space-y-5">
         {/* Summary */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="bg-white border border-slate-200 rounded-xl px-5 py-4">
             <p className="text-xs text-slate-500 uppercase tracking-wide font-medium">Total Due</p>
             <p className="text-2xl font-bold text-slate-800 mt-1">{formatCurrency(totalDue)}</p>
@@ -85,57 +85,114 @@ export default async function PaymentsPage({
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-3">
-          <form className="flex items-center gap-2">
-            <select
-              name="year"
-              defaultValue={year}
-              className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {Array.from(new Set(monthOptions.map(({ year: y }) => y))).map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
+        <form className="bg-white border border-slate-200 rounded-xl p-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
+          <select
+            name="month"
+            defaultValue={month}
+            aria-label="Month"
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-auto"
+          >
+            {monthOptions.map(({ year: y, month: m }) => (
+              <option key={`${y}-${m}`} value={m}>
+                {formatMonthYear(y, m)}
+              </option>
+            ))}
+          </select>
 
-            <select
-              name="month"
-              defaultValue={month}
-              className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {monthOptions.map(({ year: y, month: m }) => (
-                <option key={`${y}-${m}`} value={m}>
-                  {formatMonthYear(y, m)}
-                </option>
-              ))}
-            </select>
+          <select
+            name="year"
+            defaultValue={year}
+            aria-label="Year"
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-auto"
+          >
+            {Array.from(new Set(monthOptions.map(({ year: y }) => y))).map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
 
-            <select
-              name="status"
-              defaultValue={statusFilter}
-              className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All statuses</option>
-              <option value="PAID">Paid</option>
-              <option value="UNPAID">Unpaid</option>
-              <option value="PARTIAL">Partial</option>
-              <option value="OVERDUE">Overdue</option>
-              <option value="WAIVED">Waived</option>
-            </select>
+          <select
+            name="status"
+            defaultValue={statusFilter}
+            aria-label="Status"
+            className="col-span-2 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:col-span-1 sm:w-auto"
+          >
+            <option value="">All statuses</option>
+            <option value="PAID">Paid</option>
+            <option value="UNPAID">Unpaid</option>
+            <option value="PARTIAL">Partial</option>
+            <option value="OVERDUE">Overdue</option>
+            <option value="WAIVED">Waived</option>
+          </select>
 
-            <button
-              type="submit"
-              className="bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors"
-            >
-              Filter
-            </button>
-          </form>
-        </div>
+          <button
+            type="submit"
+            className="col-span-2 rounded-lg bg-blue-500 hover:bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors sm:col-span-1 sm:ml-auto"
+          >
+            Filter
+          </button>
+        </form>
 
         {/* Table */}
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="divide-y divide-slate-100 md:hidden">
+            {filtered.length === 0 ? (
+              <p className="px-5 py-10 text-center text-sm text-slate-400">
+                No payments for this period.
+              </p>
+            ) : (
+              filtered.map((payment) => (
+                <div key={payment.id} className="px-4 py-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <Link
+                        href={`/tenants/${payment.occupancy.tenantId}`}
+                        className="block truncate text-sm font-semibold text-slate-800 hover:text-blue-600"
+                      >
+                        {payment.occupancy.tenant.firstName} {payment.occupancy.tenant.lastName}
+                      </Link>
+                      <Link
+                        href={`/rooms/${payment.occupancy.roomId}`}
+                        className="mt-1 block text-xs text-slate-500 hover:text-blue-600"
+                      >
+                        {payment.occupancy.room.property.name} · {payment.occupancy.room.name}
+                      </Link>
+                    </div>
+                    <PaymentStatusBadge status={payment.status} size="sm" />
+                  </div>
+                  <dl className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <dt className="text-xs text-slate-500">Due</dt>
+                      <dd className="mt-1 font-medium text-slate-800">{formatCurrency(payment.amountDue)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Paid</dt>
+                      <dd className="mt-1 font-medium text-slate-800">
+                        {payment.amountPaid > 0 ? formatCurrency(payment.amountPaid) : "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Date Paid</dt>
+                      <dd className="mt-1 text-slate-700">{formatDate(payment.paidAt)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Method</dt>
+                      <dd className="mt-1 text-slate-700">{payment.paymentMethod?.replace("_", " ") ?? "—"}</dd>
+                    </div>
+                  </dl>
+                  <Link
+                    href={`/rooms/${payment.occupancy.roomId}`}
+                    className="inline-flex items-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-blue-600 hover:bg-slate-50"
+                  >
+                    Record payment
+                  </Link>
+                </div>
+              ))
+            )}
+          </div>
+
+          <table className="hidden w-full text-sm md:table">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
                 <th className="text-left text-xs font-medium text-slate-500 px-5 py-3">Tenant</th>

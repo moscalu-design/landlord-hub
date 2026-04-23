@@ -57,8 +57,10 @@ export default async function TenantDetailPage({
       <TopBar
         title={`${tenant.firstName} ${tenant.lastName}`}
         description={tenant.email}
+        backHref="/tenants"
+        backLabel="All tenants"
         actions={
-          <div className="flex items-center gap-2">
+          <>
             {activeOccupancy && (
               <>
                 <Link
@@ -85,11 +87,11 @@ export default async function TenantDetailPage({
             >
               Edit
             </Link>
-          </div>
+          </>
         }
       />
 
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-4 sm:p-6 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Profile */}
           <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
@@ -213,7 +215,28 @@ export default async function TenantDetailPage({
             <div className="px-5 py-4 border-b border-slate-100">
               <h2 className="text-sm font-semibold text-slate-800">Payment History</h2>
             </div>
-            <div className="overflow-x-auto">
+
+            {/* Mobile list */}
+            <div className="divide-y divide-slate-100 md:hidden">
+              {activeOccupancy.payments.map((p) => (
+                <div key={p.id} className="px-4 py-3 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-800">{formatMonthYear(p.periodYear, p.periodMonth)}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {formatCurrency(p.amountDue)} due
+                      {p.amountPaid > 0 ? ` · ${formatCurrency(p.amountPaid)} paid` : ""}
+                    </p>
+                    {p.paidAt && (
+                      <p className="text-xs text-slate-400 mt-0.5">Paid {formatDate(p.paidAt)}</p>
+                    )}
+                  </div>
+                  <PaymentStatusBadge status={p.status} size="sm" />
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100">

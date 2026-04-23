@@ -29,11 +29,11 @@ export function RoomForm({ propertyId, room }: RoomFormProps) {
 
   return (
     <form action={action} className="space-y-6 max-w-2xl">
-      <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+      <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 space-y-4">
         <h2 className="text-sm font-semibold text-slate-700">Room Details</h2>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
               Room Name <span className="text-red-500">*</span>
             </label>
@@ -116,7 +116,7 @@ export function RoomForm({ propertyId, room }: RoomFormProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"

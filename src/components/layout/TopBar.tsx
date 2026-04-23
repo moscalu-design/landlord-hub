@@ -6,12 +6,12 @@ interface TopBarProps {
 
 export function TopBar({ title, description, actions }: TopBarProps) {
   return (
-    <div className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6 shrink-0">
-      <div>
-        <h1 className="text-base font-semibold text-slate-900">{title}</h1>
-        {description && <p className="text-xs text-slate-500 mt-0.5">{description}</p>}
+    <div className="min-h-16 border-b border-slate-200 bg-white flex flex-col gap-3 px-4 py-3 shrink-0 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="min-w-0">
+        <h1 className="truncate text-base font-semibold text-slate-900">{title}</h1>
+        {description && <p className="truncate text-xs text-slate-500 mt-0.5">{description}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2 sm:justify-end">{actions}</div>}
     </div>
   );
 }

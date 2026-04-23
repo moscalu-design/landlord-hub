@@ -59,6 +59,24 @@ export default async function TenantDetailPage({
         description={tenant.email}
         actions={
           <div className="flex items-center gap-2">
+            {activeOccupancy && (
+              <>
+                <Link
+                  href={`/properties/${activeOccupancy.room.propertyId}`}
+                  data-testid="tenant-active-property-link"
+                  className="text-sm font-medium text-slate-600 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                  Property
+                </Link>
+                <Link
+                  href={`/rooms/${activeOccupancy.roomId}`}
+                  data-testid="tenant-active-room-link"
+                  className="text-sm font-medium text-slate-600 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                  Room
+                </Link>
+              </>
+            )}
             <TenantStatusBadge status={tenant.status} />
             {!activeOccupancy && <DeleteTenantForm tenantId={id} />}
             <Link

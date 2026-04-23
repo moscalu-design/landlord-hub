@@ -91,6 +91,13 @@ export default async function RoomDetailPage({
               <DeleteRoomForm roomId={id} propertyId={room.propertyId} />
             )}
             <Link
+              href={`/properties/${room.propertyId}`}
+              data-testid="room-parent-property-link"
+              className="text-sm font-medium text-slate-600 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              Property
+            </Link>
+            <Link
               href={`/rooms/${id}/inventory`}
               className="text-sm font-medium text-slate-600 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors"
             >

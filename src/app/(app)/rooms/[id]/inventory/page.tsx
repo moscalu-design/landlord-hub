@@ -49,12 +49,22 @@ export default async function RoomInventoryPage({
         title="Inventory"
         description={`${room.name} · ${room.property.name}`}
         actions={
-          <Link
-            href={`/rooms/${id}`}
-            className="text-sm font-medium text-slate-600 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors"
-          >
-            ← Back to Room
-          </Link>
+          <>
+            <Link
+              href={`/properties/${room.propertyId}`}
+              data-testid="inventory-parent-property-link"
+              className="text-sm font-medium text-slate-600 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              Property
+            </Link>
+            <Link
+              href={`/rooms/${id}`}
+              data-testid="inventory-parent-room-link"
+              className="text-sm font-medium text-slate-600 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              Room
+            </Link>
+          </>
         }
       />
 

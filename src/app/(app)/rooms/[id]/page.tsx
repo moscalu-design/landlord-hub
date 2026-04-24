@@ -16,7 +16,7 @@ import { summarizeDepositTransactions } from "@/lib/depositUtils";
 import { computePaymentStatus } from "@/lib/utils";
 import { getDisplayRoomStatus } from "@/lib/roomOccupancy";
 import prisma from "@/lib/prisma";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, toDateInputValue } from "@/lib/utils";
 
 export default async function RoomDetailPage({
   params,
@@ -80,6 +80,7 @@ export default async function RoomDetailPage({
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
+  const todayInputValue = toDateInputValue(now);
 
   return (
     <div className="flex flex-col flex-1">
@@ -174,7 +175,7 @@ export default async function RoomDetailPage({
                   >
                     Edit Tenancy
                   </Link>
-                  <EndTenancyForm occupancyId={activeOccupancy.id} />
+                  <EndTenancyForm occupancyId={activeOccupancy.id} todayInputValue={todayInputValue} />
                 </div>
               </div>
 
@@ -288,6 +289,7 @@ export default async function RoomDetailPage({
                     refunded={activeOccupancy.deposit.refunded}
                     refundDueDate={activeOccupancy.deposit.refundDueDate}
                     transactions={activeOccupancy.deposit.transactions}
+                    todayInputValue={todayInputValue}
                   />
                 </>
               ) : (
@@ -306,6 +308,7 @@ export default async function RoomDetailPage({
               <RecordPaymentForm
                 currentYear={currentYear}
                 currentMonth={currentMonth}
+                todayInputValue={todayInputValue}
                 payments={activeOccupancy.payments}
               />
             </div>
@@ -329,6 +332,7 @@ export default async function RoomDetailPage({
                 tenants={availableTenants}
                 defaultRent={room.monthlyRent}
                 defaultDeposit={room.depositAmount}
+                todayInputValue={todayInputValue}
               />
             </div>
           </div>
@@ -385,6 +389,7 @@ export default async function RoomDetailPage({
                         refundDueDate={o.deposit!.refundDueDate}
                         transactions={o.deposit!.transactions}
                         compact
+                        todayInputValue={todayInputValue}
                       />
                     </div>
                   </div>

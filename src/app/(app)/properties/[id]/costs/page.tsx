@@ -5,6 +5,7 @@ import { PropertyExpensesSection } from "@/components/properties/PropertyExpense
 import { QuickAddCostButton } from "@/components/properties/PropertyCostsSummary";
 import { PropertySubnav } from "@/components/properties/PropertySubnav";
 import prisma from "@/lib/prisma";
+import { toDateInputValue } from "@/lib/utils";
 
 export default async function PropertyCostsPage({
   params,
@@ -26,6 +27,7 @@ export default async function PropertyCostsPage({
   });
 
   if (!property) notFound();
+  const todayInputValue = toDateInputValue(new Date());
 
   return (
     <div className="flex flex-col flex-1">
@@ -48,6 +50,7 @@ export default async function PropertyCostsPage({
             <div className="sm:w-auto w-full">
               <QuickAddCostButton
                 propertyId={id}
+                todayInputValue={todayInputValue}
                 className="w-full sm:w-auto text-sm font-medium text-blue-700 border border-blue-200 bg-blue-50 hover:bg-blue-100 rounded-lg px-4 py-2.5 transition-colors"
               />
             </div>

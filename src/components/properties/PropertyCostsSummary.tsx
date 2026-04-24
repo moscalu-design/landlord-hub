@@ -32,24 +32,22 @@ const CATEGORY_CONFIG: Record<string, { label: string; icon: string }> = {
   OTHER:       { label: "Other",       icon: "📎" },
 };
 
-function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 // ─── Quick Add Modal ──────────────────────────────────────────────────────────
 
 export function QuickAddCostModal({
   propertyId,
   onClose,
+  todayInputValue,
 }: {
   propertyId: string;
   onClose: () => void;
+  todayInputValue: string;
 }) {
   const router = useRouter();
   const [costType, setCostType] = useState<"one-off" | "recurring">("one-off");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [date, setDate] = useState(todayStr());
+  const [date, setDate] = useState(todayInputValue);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -199,7 +197,7 @@ export function QuickAddCostModal({
                   name="startDate"
                   type="date"
                   required
-                  defaultValue={todayStr().slice(0, 7) + "-01"}
+                  defaultValue={todayInputValue.slice(0, 7) + "-01"}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -249,10 +247,12 @@ export function QuickAddCostModal({
 
 export function QuickAddCostButton({
   propertyId,
+  todayInputValue,
   label = "+ Quick Add Cost",
   className = "w-full text-sm font-medium text-blue-600 border border-blue-200 bg-blue-50 hover:bg-blue-100 rounded-lg py-2 transition-colors",
 }: {
   propertyId: string;
+  todayInputValue: string;
   label?: string;
   className?: string;
 }) {
@@ -270,7 +270,11 @@ export function QuickAddCostButton({
       </button>
 
       {showModal && (
-        <QuickAddCostModal propertyId={propertyId} onClose={() => setShowModal(false)} />
+        <QuickAddCostModal
+          propertyId={propertyId}
+          todayInputValue={todayInputValue}
+          onClose={() => setShowModal(false)}
+        />
       )}
     </>
   );
@@ -281,18 +285,20 @@ export function QuickAddCostButton({
 export function PropertyCostsSummary({
   propertyId,
   expenses,
+  currentYear,
+  currentMonth,
+  todayInputValue,
 }: {
   propertyId: string;
   expenses: Expense[];
+  currentYear: number;
+  currentMonth: number;
+  todayInputValue: string;
 }) {
-  const now = new Date();
-  const thisYear = now.getFullYear();
-  const thisMonth = now.getMonth() + 1;
-
-  const thisMonthTotal = getExpenseTotalForMonth(expenses, thisYear, thisMonth);
-  const recurringMonthly = getRecurringMonthlyTotal(expenses, thisYear, thisMonth);
+  const thisMonthTotal = getExpenseTotalForMonth(expenses, currentYear, currentMonth);
+  const recurringMonthly = getRecurringMonthlyTotal(expenses, currentYear, currentMonth);
   const thisYearTotal = Array.from({ length: 12 }, (_, i) => i + 1).reduce(
-    (sum, m) => sum + getExpenseTotalForMonth(expenses, thisYear, m),
+    (sum, m) => sum + getExpenseTotalForMonth(expenses, currentYear, m),
     0
   );
 
@@ -324,7 +330,7 @@ export function PropertyCostsSummary({
           </div>
         </div>
 
-        <QuickAddCostButton propertyId={propertyId} />
+        <QuickAddCostButton propertyId={propertyId} todayInputValue={todayInputValue} />
       </div>
     </>
   );

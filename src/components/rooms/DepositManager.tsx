@@ -20,6 +20,7 @@ interface DepositManagerProps {
   refundDueDate?: Date | string | null;
   transactions: DepositTransaction[];
   compact?: boolean;
+  todayInputValue: string;
 }
 
 function formatTotals(required: number, transactions: DepositTransaction[]) {
@@ -48,6 +49,7 @@ export function DepositManager({
   refundDueDate,
   transactions,
   compact = false,
+  todayInputValue,
 }: DepositManagerProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -55,7 +57,7 @@ export function DepositManager({
   const [error, setError] = useState<string | null>(null);
   const [type, setType] = useState("RECEIVED");
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(todayInputValue);
   const [description, setDescription] = useState("");
 
   const totals = formatTotals(required, transactions);

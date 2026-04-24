@@ -44,6 +44,7 @@ interface AssignTenantFormProps {
   tenants: TenantOption[];
   defaultRent: number;
   defaultDeposit: number;
+  todayInputValue: string;
 }
 
 const initialCreateState: QuickCreateTenantState = {
@@ -55,8 +56,8 @@ export function AssignTenantForm({
   tenants,
   defaultRent,
   defaultDeposit,
+  todayInputValue,
 }: AssignTenantFormProps) {
-  const today = new Date().toISOString().split("T")[0];
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<"assign" | "create">(
     tenants.length > 0 ? "assign" : "create"
@@ -246,7 +247,7 @@ export function AssignTenantForm({
                         type="date"
                         name="leaseStart"
                         required
-                        defaultValue={today}
+                        defaultValue={todayInputValue}
                         className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>

@@ -17,6 +17,11 @@ function formatDateLabel(date: Date) {
   }).format(date);
 }
 
+function currentMonthLabel() {
+  const today = new Date();
+  return today.toLocaleString("en-GB", { month: "long", year: "numeric" });
+}
+
 test("room tenancy, deposit, tenant navigation, and contract workflow stay consistent", async ({
   page,
 }) => {
@@ -184,7 +189,7 @@ test("room tenancy, deposit, tenant navigation, and contract workflow stay consi
 
     monitor.reset();
     await expect(page.getByRole("button", { name: "Record Payment Now" })).toBeVisible();
-    const currentPeriodRow = page.locator("tbody tr").first();
+    const currentPeriodRow = page.locator("tbody tr").filter({ hasText: currentMonthLabel() });
     await expect(currentPeriodRow).toContainText(tenantName);
     await page.locator('input[name="amountPaid"]').fill("1234");
     await page.locator('select[name="paymentMethod"]').selectOption("BANK_TRANSFER");

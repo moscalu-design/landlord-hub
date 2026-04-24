@@ -3,15 +3,12 @@
 import { useState } from "react";
 import { endOccupancy } from "@/actions/occupancies";
 
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 interface EndTenancyFormProps {
   occupancyId: string;
+  todayInputValue: string;
 }
 
-export function EndTenancyForm({ occupancyId }: EndTenancyFormProps) {
+export function EndTenancyForm({ occupancyId, todayInputValue }: EndTenancyFormProps) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +78,7 @@ export function EndTenancyForm({ occupancyId }: EndTenancyFormProps) {
                   name="moveOutDate"
                   type="date"
                   required
-                  defaultValue={todayStr()}
+                  defaultValue={todayInputValue}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>

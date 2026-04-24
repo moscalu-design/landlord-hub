@@ -8,6 +8,11 @@ import {
 } from "./helpers/crud";
 import { assertAppHealthy, attachAppMonitor } from "./helpers/monitor";
 
+function currentMonthLabel() {
+  const today = new Date();
+  return today.toLocaleString("en-GB", { month: "long", year: "numeric" });
+}
+
 test("payment flow creates relationship-backed payments and records updates safely", async ({ page }) => {
   test.setTimeout(300_000);
   requireDestructive();
@@ -50,8 +55,9 @@ test("payment flow creates relationship-backed payments and records updates safe
     await amountInput.fill("1111");
     await page.locator('select[name="paymentMethod"]').selectOption("BANK_TRANSFER");
     await page.getByRole("button", { name: "Record Payment" }).click();
-    await expect(page.locator("tbody tr").first().getByTestId("payment-history-paid")).toContainText("€1,111", { timeout: 15_000 });
-    await expect(page.locator("tbody tr").first()).toContainText("Paid", { timeout: 15_000 });
+    const currentPeriodRow = page.locator("tbody tr").filter({ hasText: currentMonthLabel() });
+    await expect(currentPeriodRow.getByTestId("payment-history-paid")).toContainText("€1,111", { timeout: 15_000 });
+    await expect(currentPeriodRow).toContainText("Paid", { timeout: 15_000 });
     await assertAppHealthy(page, monitor, "payment recorded");
 
     monitor.reset();

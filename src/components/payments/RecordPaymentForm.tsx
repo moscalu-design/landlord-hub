@@ -24,6 +24,7 @@ function SubmitButton() {
 interface RecordPaymentFormProps {
   currentYear: number;
   currentMonth: number;
+  todayInputValue: string;
   payments: Payment[];
 }
 
@@ -41,6 +42,7 @@ function sortPeriodsAsc(a: Period, b: Period) {
 export function RecordPaymentForm({
   currentYear,
   currentMonth,
+  todayInputValue,
   payments,
 }: RecordPaymentFormProps) {
   // Build a rolling 6-month window around today. Always selectable so operators
@@ -167,7 +169,7 @@ export function RecordPaymentForm({
             <input
               name="paidAt"
               type="date"
-              defaultValue={new Date().toISOString().split("T")[0]}
+              defaultValue={todayInputValue}
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>

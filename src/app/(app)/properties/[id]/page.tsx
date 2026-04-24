@@ -12,7 +12,7 @@ import { getMonthlyCostForMonth } from "@/lib/mortgage";
 import { getExpenseTotalForMonth } from "@/lib/expenses";
 import { getDisplayRoomStatus, summarizeRooms } from "@/lib/roomOccupancy";
 import prisma from "@/lib/prisma";
-import { computePaymentStatus, formatCurrency, formatDate } from "@/lib/utils";
+import { computePaymentStatus, formatCurrency, formatDate, toDateInputValue } from "@/lib/utils";
 
 export default async function PropertyDetailPage({
   params,
@@ -24,6 +24,7 @@ export default async function PropertyDetailPage({
   const now = new Date();
   const thisYear = now.getFullYear();
   const thisMonth = now.getMonth() + 1;
+  const todayInputValue = toDateInputValue(now);
 
   // Last 12 months for chart query
   const chartMonthFilter = Array.from({ length: 12 }, (_, i) => {
@@ -161,7 +162,13 @@ export default async function PropertyDetailPage({
         <PropertyMortgageSummary propertyId={id} mortgages={property.mortgages} />
 
         {/* ── Costs summary ─────────────────────────────────────────────── */}
-        <PropertyCostsSummary propertyId={id} expenses={property.expenses} />
+        <PropertyCostsSummary
+          propertyId={id}
+          expenses={property.expenses}
+          currentYear={thisYear}
+          currentMonth={thisMonth}
+          todayInputValue={todayInputValue}
+        />
 
         {/* ── Rooms ─────────────────────────────────────────────────────── */}
         <div id="rooms" data-testid="property-rooms-section" className="space-y-3">

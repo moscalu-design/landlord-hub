@@ -200,7 +200,7 @@ test("room tenancy, deposit, tenant navigation, and contract workflow stay consi
 
     monitor.reset();
     await page.getByTestId("payment-history-next").click();
-    await expect(page.locator("tbody tr")).toHaveCount(4);
+    await expect(page.locator("tbody tr")).toHaveCount(5);
     await expect(page.getByText("Page 2 of 2")).toBeVisible();
     await page.getByTestId("payment-history-prev").click();
     await expect(page.getByText("Page 1 of 2")).toBeVisible();

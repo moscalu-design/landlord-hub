@@ -10,11 +10,11 @@ interface StatCardProps {
 
 export function StatCard({ label, value, sub, icon, className }: StatCardProps) {
   return (
-    <div className={cn("bg-white rounded-xl border border-slate-200 p-5", className)}>
-      <div className="flex items-start justify-between">
-        <div>
+    <div className={cn("rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/40 sm:p-5", className)}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{value}</p>
+          <p className="mt-1 truncate text-xl font-bold text-slate-950 sm:text-2xl">{value}</p>
           {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
         </div>
         {icon && (

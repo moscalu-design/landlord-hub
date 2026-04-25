@@ -63,9 +63,9 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <aside className="w-56 shrink-0 bg-slate-900 flex flex-col h-full">
+    <aside className="flex h-full w-60 shrink-0 flex-col bg-slate-950">
       {/* Brand */}
-      <div className="h-16 flex items-center px-5 border-b border-slate-800">
+      <div className="flex h-16 items-center border-b border-slate-800 px-5">
         <div className="flex items-center gap-2.5 flex-1">
           <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center shrink-0">
             <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -90,7 +90,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-4 px-3 space-y-0.5">
+      <nav className="flex-1 space-y-0.5 px-3 py-4" aria-label="Primary navigation">
         {navItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(item.href + "/");
@@ -99,12 +99,13 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
             <Link
               key={item.href}
               href={item.href}
+              aria-current={isActive ? "page" : undefined}
               onClick={onClose}
               className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-offset-2",
                 isActive
                   ? "bg-blue-500 text-white"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
               )}
             >
               {item.icon}

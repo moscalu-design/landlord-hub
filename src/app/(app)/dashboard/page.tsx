@@ -88,9 +88,9 @@ export default async function DashboardPage() {
         description={`Overview for ${monthName} ${data.year}`}
       />
 
-      <div className="flex-1 p-4 sm:p-6 space-y-6">
+      <div className="flex-1 space-y-6 p-4 sm:p-6">
         {/* Stats grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="Properties"
             value={data.propertyCount}
@@ -119,11 +119,11 @@ export default async function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* This month's payments */}
-          <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200">
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-200/40 lg:col-span-2">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
               <h2 className="text-sm font-semibold text-slate-800">{monthName} Payments</h2>
-              <Link href="/payments" className="text-xs text-blue-600 hover:text-blue-700 font-medium">
-                View all →
+              <Link href="/payments" className="rounded-md text-xs font-medium text-blue-600 hover:text-blue-700">
+                View all
               </Link>
             </div>
             <div className="divide-y divide-slate-100">
@@ -143,7 +143,7 @@ export default async function DashboardPage() {
                         {payment.occupancy.room.property.name} · {payment.occupancy.room.name}
                       </p>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0 ml-4">
+                    <div className="flex shrink-0 items-center gap-3 sm:ml-4">
                       <span className="text-sm font-medium text-slate-700">
                         {formatCurrency(payment.amountDue)}
                       </span>
@@ -156,7 +156,7 @@ export default async function DashboardPage() {
           </div>
 
           {/* Recent Activity */}
-          <div className="bg-white rounded-xl border border-slate-200">
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-200/40">
             <div className="px-5 py-4 border-b border-slate-100">
               <h2 className="text-sm font-semibold text-slate-800">Recent Activity</h2>
             </div>
@@ -176,7 +176,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Quick links */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { href: "/properties/new", label: "Add Property" },
             { href: "/tenants/new", label: "Add Tenant" },
@@ -186,7 +186,7 @@ export default async function DashboardPage() {
             <Link
               key={link.href}
               href={link.href}
-              className="bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-medium text-slate-700 hover:border-blue-300 hover:text-blue-600 hover:shadow-sm transition text-center"
+              className="rounded-lg border border-slate-200 bg-white px-4 py-3.5 text-center text-sm font-medium text-slate-700 transition hover:border-blue-300 hover:text-blue-600 hover:shadow-sm"
             >
               {link.label}
             </Link>

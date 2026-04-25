@@ -7,11 +7,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen min-h-[100svh] overflow-x-hidden bg-slate-50">
+    <div className="flex min-h-screen min-h-[100svh] overflow-x-hidden bg-slate-50 text-slate-900">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-slate-950/50 lg:hidden"
+          className="fixed inset-0 z-30 bg-slate-950/50 backdrop-blur-[1px] lg:hidden"
           onClick={() => setSidebarOpen(false)}
           aria-hidden
         />
@@ -52,7 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <main className="flex flex-1 flex-col">{children}</main>
+        <main className="flex flex-1 flex-col bg-slate-50">{children}</main>
       </div>
     </div>
   );

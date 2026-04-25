@@ -35,7 +35,7 @@ export default async function PropertiesPage() {
         actions={
           <Link
             href="/properties/new"
-            className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
           >
             + Add Property
           </Link>
@@ -48,10 +48,7 @@ export default async function PropertiesPage() {
             title="No properties yet"
             description="Add your first property to get started."
             action={
-              <Link
-                href="/properties/new"
-                className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-              >
+              <Link href="/properties/new" className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700">
                 Add Property
               </Link>
             }
@@ -63,7 +60,7 @@ export default async function PropertiesPage() {
             }
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
+          <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
             {properties.map((property) => {
               const { occupiedRooms, monthlyIncome } = summarizeRooms(property.rooms);
               const totalRooms = property._count.rooms;
@@ -74,7 +71,7 @@ export default async function PropertiesPage() {
                   key={property.id}
                   href={`/properties/${property.id}`}
                   data-testid="property-link"
-                  className="bg-white border border-slate-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-sm transition group"
+                  className="group flex min-h-44 flex-col rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/40 transition hover:border-blue-300 hover:shadow-md"
                 >
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex items-center gap-3 min-w-0">
@@ -98,17 +95,17 @@ export default async function PropertiesPage() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-slate-100">
-                    <div>
-                      <p className="text-lg font-bold text-slate-800">{occupiedRooms}<span className="text-sm text-slate-400 font-medium">/{totalRooms}</span></p>
+                  <div className="mt-auto grid grid-cols-3 gap-3 border-t border-slate-100 pt-4">
+                    <div className="min-w-0">
+                      <p className="truncate text-lg font-bold text-slate-800">{occupiedRooms}<span className="text-sm text-slate-400 font-medium">/{totalRooms}</span></p>
                       <p className="text-xs text-slate-500">Occupied</p>
                     </div>
-                    <div>
-                      <p className="text-lg font-bold text-slate-800">{occupancyRate}<span className="text-sm text-slate-400 font-medium">%</span></p>
+                    <div className="min-w-0">
+                      <p className="truncate text-lg font-bold text-slate-800">{occupancyRate}<span className="text-sm text-slate-400 font-medium">%</span></p>
                       <p className="text-xs text-slate-500">Occupancy</p>
                     </div>
-                    <div>
-                      <p className="text-lg font-bold text-slate-800">{formatCurrency(monthlyIncome)}</p>
+                    <div className="min-w-0">
+                      <p className="truncate text-base font-bold text-slate-800 sm:text-lg">{formatCurrency(monthlyIncome)}</p>
                       <p className="text-xs text-slate-500">/ month</p>
                     </div>
                   </div>

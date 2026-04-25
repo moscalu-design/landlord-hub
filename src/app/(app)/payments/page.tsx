@@ -74,22 +74,22 @@ export default async function PaymentsPage({
       <div className="flex-1 p-4 sm:p-6 space-y-5">
         {/* Summary */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="bg-white border border-slate-200 rounded-xl px-5 py-4">
+          <div className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm shadow-slate-200/40">
             <p className="text-xs text-slate-500 uppercase tracking-wide font-medium">Total Due</p>
-            <p className="text-2xl font-bold text-slate-800 mt-1">{formatCurrency(totalDue)}</p>
+            <p className="mt-1 truncate text-2xl font-bold text-slate-800">{formatCurrency(totalDue)}</p>
           </div>
-          <div className="bg-white border border-slate-200 rounded-xl px-5 py-4">
+          <div className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm shadow-slate-200/40">
             <p className="text-xs text-slate-500 uppercase tracking-wide font-medium">Collected</p>
-            <p className="text-2xl font-bold text-green-700 mt-1">{formatCurrency(totalPaid)}</p>
+            <p className="mt-1 truncate text-2xl font-bold text-green-700">{formatCurrency(totalPaid)}</p>
           </div>
-          <div className="bg-white border border-slate-200 rounded-xl px-5 py-4">
+          <div className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm shadow-slate-200/40">
             <p className="text-xs text-slate-500 uppercase tracking-wide font-medium">Outstanding</p>
-            <p className="text-2xl font-bold text-red-600 mt-1">{formatCurrency(totalOutstanding)}</p>
+            <p className="mt-1 truncate text-2xl font-bold text-red-600">{formatCurrency(totalOutstanding)}</p>
           </div>
         </div>
 
         {/* Filters */}
-        <form className="bg-white border border-slate-200 rounded-xl p-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
+        <form className="grid grid-cols-2 gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm shadow-slate-200/40 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
           <select
             name="month"
             defaultValue={month}
@@ -132,14 +132,14 @@ export default async function PaymentsPage({
 
           <button
             type="submit"
-            className="col-span-2 rounded-lg bg-blue-500 hover:bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors sm:col-span-1 sm:ml-auto"
+            className="col-span-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 sm:col-span-1 sm:ml-auto"
           >
             Filter
           </button>
         </form>
 
         {/* Table */}
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-200/40">
           <div className="divide-y divide-slate-100 md:hidden">
             {filtered.length === 0 ? (
               <p className="px-5 py-10 text-center text-sm text-slate-400">

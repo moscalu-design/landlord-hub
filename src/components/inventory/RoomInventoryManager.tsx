@@ -65,7 +65,7 @@ function ItemForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-3">
+    <form onSubmit={handleSubmit} className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
       {error && (
         <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
           {error}
@@ -177,7 +177,7 @@ export function RoomInventoryManager({
   const totalValue = items.reduce((sum, i) => sum + (i.estimatedValue ?? 0) * i.quantity, 0);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl">
+    <div className="rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-200/40">
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
         <div>
           <h2 className="text-sm font-semibold text-slate-800">Room Inventory</h2>
@@ -189,7 +189,7 @@ export function RoomInventoryManager({
         <button
           type="button"
           onClick={() => { setShowAdd(true); setEditingId(null); }}
-          className="text-xs font-medium text-blue-600 hover:text-blue-700 border border-blue-200 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+          className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
         >
           + Add item
         </button>
@@ -218,7 +218,7 @@ export function RoomInventoryManager({
             <div
               key={item.id}
               data-testid="inventory-item-row"
-              className="flex items-start justify-between gap-4 py-3 border-b border-slate-100 last:border-0"
+              className="flex flex-col gap-3 border-b border-slate-100 py-3 last:border-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -234,7 +234,7 @@ export function RoomInventoryManager({
                   <p className="text-xs text-slate-400 mt-0.5 truncate">{item.notes}</p>
                 )}
               </div>
-              <div className="flex items-center gap-3 shrink-0">
+              <div className="flex shrink-0 items-center gap-3">
                 {item.estimatedValue !== null && (
                   <span className="text-xs text-slate-500">{formatCurrency(item.estimatedValue * item.quantity)}</span>
                 )}

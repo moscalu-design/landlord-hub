@@ -29,7 +29,7 @@ export default async function TenantsPage() {
         actions={
           <Link
             href="/tenants/new"
-            className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
           >
             + Add Tenant
           </Link>
@@ -42,7 +42,7 @@ export default async function TenantsPage() {
             title="No tenants yet"
             description="Add your first tenant profile."
             action={
-              <Link href="/tenants/new" className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+              <Link href="/tenants/new" className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700">
                 Add Tenant
               </Link>
             }
@@ -63,7 +63,7 @@ export default async function TenantsPage() {
                   <Link
                     key={tenant.id}
                     href={`/tenants/${tenant.id}`}
-                    className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-300 transition"
+                    className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/40 transition hover:border-blue-300"
                   >
                     <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-sm shrink-0">
                       {tenant.firstName[0]}{tenant.lastName[0]}
@@ -92,7 +92,7 @@ export default async function TenantsPage() {
             </div>
 
             {/* Desktop table */}
-            <div className="hidden md:block bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="hidden overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-200/40 md:block">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>

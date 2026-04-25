@@ -279,7 +279,7 @@ function NewInspectionForm({
     <form
       onSubmit={handleSubmit}
       data-testid="new-inspection-form"
-      className="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-4"
+      className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-4"
     >
       {error && (
         <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
@@ -434,7 +434,7 @@ function PhotoGrid({
         <div
           key={photo.id}
           data-testid="inspection-photo-thumb"
-          className="overflow-hidden rounded-lg border border-slate-200 bg-white"
+      className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-200/40"
         >
           <a href={`/api/inspection-photos/${photo.id}`} target="_blank" rel="noreferrer">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -683,11 +683,11 @@ function InspectionCard({
 
   return (
     <div
-      className="border border-slate-200 rounded-xl overflow-hidden"
+      className="overflow-hidden rounded-lg border border-slate-200 shadow-sm shadow-slate-200/40"
       data-testid="inspection-card"
       data-inspection-id={inspection.id}
     >
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
+      <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <span
             className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
@@ -799,7 +799,7 @@ export function InventoryInspectionView({
   const checkOut = occupancy.inspections.find((i) => i.type === "CHECK_OUT");
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl">
+    <div className="rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-200/40">
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
         <div>
           <h2 className="text-sm font-semibold text-slate-800">

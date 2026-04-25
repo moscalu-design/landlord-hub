@@ -117,13 +117,13 @@ export default async function PropertyDetailPage({
         <PropertySubnav propertyId={id} active="overview" />
 
         {/* ── Summary cards ─────────────────────────────────────────────── */}
-        <div data-testid="property-summary-cards" className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-          <div data-testid="property-summary-total-rooms" className="bg-white border border-slate-200 rounded-xl px-4 py-4">
+        <div data-testid="property-summary-cards" className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
+          <div data-testid="property-summary-total-rooms" className="rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm shadow-slate-200/40">
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Rooms</p>
             <p className="text-2xl font-bold text-slate-900 mt-1">{totalRooms}</p>
           </div>
 
-          <div data-testid="property-summary-vacant" className="bg-white border border-slate-200 rounded-xl px-4 py-4">
+          <div data-testid="property-summary-vacant" className="rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm shadow-slate-200/40">
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Vacant</p>
             <p className="text-2xl font-bold text-slate-900 mt-1">{vacantRooms}</p>
             {totalRooms > 0 && (
@@ -131,19 +131,19 @@ export default async function PropertyDetailPage({
             )}
           </div>
 
-          <div data-testid="property-summary-income" className="bg-white border border-slate-200 rounded-xl px-4 py-4">
+          <div data-testid="property-summary-income" className="rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm shadow-slate-200/40">
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Monthly Income</p>
-            <p className="text-2xl font-bold text-slate-900 mt-1">
+            <p className="mt-1 truncate text-2xl font-bold text-slate-900">
               {formatCurrency(monthlyIncome)}
             </p>
             <p className="text-xs text-slate-400 mt-1">contracted rent</p>
           </div>
 
-          <div data-testid="property-summary-profit" className="bg-white border border-slate-200 rounded-xl px-4 py-4">
+          <div data-testid="property-summary-profit" className="rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm shadow-slate-200/40">
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Monthly Profit</p>
             <p
               data-testid="property-summary-profit-value"
-              className={`text-2xl font-bold mt-1 ${
+              className={`mt-1 truncate text-2xl font-bold ${
                 monthlyProfit >= 0 ? "text-emerald-600" : "text-red-500"
               }`}
             >
@@ -176,7 +176,7 @@ export default async function PropertyDetailPage({
             <h2 className="text-sm font-semibold text-slate-800">Rooms</h2>
             <Link
               href={`/properties/${id}/rooms/new`}
-              className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+              className="rounded-md text-xs font-medium text-blue-600 hover:text-blue-700"
             >
               + Add Room
             </Link>
@@ -204,7 +204,7 @@ export default async function PropertyDetailPage({
                     key={room.id}
                     href={`/rooms/${room.id}`}
                     data-testid="room-link"
-                    className="flex items-center justify-between gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3.5 sm:px-5 hover:border-blue-300 hover:shadow-sm transition group"
+                    className="group flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3.5 shadow-sm shadow-slate-200/40 transition hover:border-blue-300 hover:shadow-md sm:px-5"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -226,7 +226,7 @@ export default async function PropertyDetailPage({
 
                     <div className="flex items-center gap-3 shrink-0">
                       <div className="text-right">
-                        <p className="text-sm font-semibold text-slate-800">
+                        <p className="whitespace-nowrap text-sm font-semibold text-slate-800">
                           {formatCurrency(room.monthlyRent)}
                         </p>
                         <p className="text-xs text-slate-500">/ mo</p>

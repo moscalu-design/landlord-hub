@@ -98,7 +98,10 @@ export async function createInspection(
   occupancyId: string,
   roomId: string,
   data: z.infer<typeof InspectionWithItemsSchema>
-): Promise<{ id: string }> {
+): Promise<{
+  id: string;
+  items: { id: string; inventoryItemId: string | null }[];
+}> {
   await requireAuth();
 
   const validated = InspectionWithItemsSchema.parse(data);
@@ -156,10 +159,19 @@ export async function createInspection(
         }),
       },
     },
+    include: {
+      items: { select: { id: true, inventoryItemId: true } },
+    },
   });
 
   revalidatePath(`/rooms/${roomId}/inventory`);
-  return { id: inspection.id };
+  return {
+    id: inspection.id,
+    items: inspection.items.map((i) => ({
+      id: i.id,
+      inventoryItemId: i.inventoryItemId,
+    })),
+  };
 }
 
 export async function deleteInspection(

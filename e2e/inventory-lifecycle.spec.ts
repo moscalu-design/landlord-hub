@@ -8,6 +8,7 @@ import {
   deleteTenant,
   requireDestructive,
 } from "./helpers/crud";
+import { E2E_ENTITY_PREFIX } from "./helpers/env";
 import { assertAppHealthy, attachAppMonitor } from "./helpers/monitor";
 
 test("mobile tenancy lifecycle preserves inventory inspection snapshots", async ({ page }) => {
@@ -17,25 +18,26 @@ test("mobile tenancy lifecycle preserves inventory inspection snapshots", async 
 
   const monitor = attachAppMonitor(page);
   let propertyUrl: string | null = null;
+  let roomUrl: string | null = null;
   let tenantUrl: string | null = null;
-  let canCleanup = false;
 
   await login(page);
   monitor.reset();
 
   const property = await createProperty(page, {
-    name: `[E2E] Inventory Lifecycle ${Date.now()}`,
+    name: `${E2E_ENTITY_PREFIX} Inventory Lifecycle ${Date.now()}`,
   });
   propertyUrl = property.url;
 
   const room = await createRoom(page, property.id, {
-    name: `[E2E] Lifecycle Room ${Date.now()}`,
+    name: `${E2E_ENTITY_PREFIX} Lifecycle Room ${Date.now()}`,
     monthlyRent: "1200",
     depositAmount: "900",
   });
+  roomUrl = room.url;
 
   const tenant = await createTenant(page, {
-    firstName: "E2E",
+    firstName: E2E_ENTITY_PREFIX,
     lastName: `Inventory ${Date.now()}`,
   });
   tenantUrl = tenant.url;
@@ -54,10 +56,23 @@ test("mobile tenancy lifecycle preserves inventory inspection snapshots", async 
 
     monitor.reset();
     await page.getByTestId("deposit-update-button").click();
+    await expect(page.getByTestId("deposit-update-modal")).toBeVisible();
     await page.getByTestId("deposit-action-type").selectOption("RECEIVED");
     await page.getByTestId("deposit-action-amount").fill("900");
+    const depositResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/occupancies/") &&
+        response.url().includes("/deposit") &&
+        response.request().method() === "POST"
+    );
     await page.getByTestId("deposit-action-submit").click();
-    await expect(page.getByTestId("deposit-received-value")).toContainText("900");
+    const depositResponse = await depositResponsePromise;
+    expect(depositResponse.status()).toBe(200);
+    await expect
+      .poll(async () => page.getByTestId("deposit-received-value").innerText(), {
+        timeout: 15_000,
+      })
+      .toContain("900");
     await assertAppHealthy(page, monitor, "deposit received");
 
     monitor.reset();
@@ -117,12 +132,20 @@ test("mobile tenancy lifecycle preserves inventory inspection snapshots", async 
     await expect(page.getByTestId("room-vacant-state")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("deposit-refund-warning")).toBeVisible();
     await assertAppHealthy(page, monitor, "ended tenancy with refund warning");
-    canCleanup = true;
   } finally {
-    if (canCleanup && tenantUrl) {
+    if (roomUrl) {
+      await page.goto(roomUrl, { waitUntil: "domcontentloaded" }).catch(() => undefined);
+      const endBtn = page.getByTestId("end-tenancy-btn");
+      if ((await endBtn.count().catch(() => 0)) > 0) {
+        await endBtn.click().catch(() => undefined);
+        await page.getByTestId("confirm-end-tenancy-btn").click().catch(() => undefined);
+        await expect(page.getByTestId("room-vacant-state")).toBeVisible({ timeout: 15_000 }).catch(() => undefined);
+      }
+    }
+    if (tenantUrl) {
       await deleteTenant(page, tenantUrl).catch(() => undefined);
     }
-    if (canCleanup && propertyUrl) {
+    if (propertyUrl) {
       await archiveProperty(page, propertyUrl).catch(() => undefined);
     }
   }

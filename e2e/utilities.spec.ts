@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { login } from "./helpers/auth";
-import { createProperty, requireDestructive } from "./helpers/crud";
+import { archiveProperty, createProperty, requireDestructive } from "./helpers/crud";
+import { E2E_ENTITY_PREFIX } from "./helpers/env";
 import { assertAppHealthy, attachAppMonitor } from "./helpers/monitor";
 
 async function openMonth(page: Page, year: number, month: number) {
@@ -28,7 +29,7 @@ test("utilities and costs support create, grouping, edit, receipt lifecycle, del
   monitor.reset();
 
   const property = await createProperty(page, {
-    name: `E2E Utilities Property ${Date.now()}`,
+    name: `${E2E_ENTITY_PREFIX} Utilities Property ${Date.now()}`,
     notes: "utilities e2e fixture",
   });
   propertyUrl = property.url;
@@ -145,6 +146,8 @@ test("utilities and costs support create, grouping, edit, receipt lifecycle, del
     await expect(expenseRow(page, badTitle)).toHaveCount(0);
     await assertAppHealthy(page, monitor, "bad receipt fixture cleaned up");
   } finally {
-    // Leave this isolated fixture in local destructive runs; the behavior under test has already completed.
+    if (propertyUrl) {
+      await archiveProperty(page, propertyUrl).catch(() => undefined);
+    }
   }
 });

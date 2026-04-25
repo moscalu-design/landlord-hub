@@ -9,6 +9,7 @@ import {
   escapeRegExp,
   requireDestructive,
 } from "./helpers/crud";
+import { E2E_ENTITY_PREFIX } from "./helpers/env";
 import { assertAppHealthy, attachAppMonitor } from "./helpers/monitor";
 
 test("contextual navigation connects property, room, tenant, inventory, and form pages", async ({ page }) => {
@@ -17,23 +18,24 @@ test("contextual navigation connects property, room, tenant, inventory, and form
 
   const monitor = attachAppMonitor(page);
   let propertyUrl: string | null = null;
+  let roomUrl: string | null = null;
   let tenantUrl: string | null = null;
-  let canCleanup = false;
 
   await login(page);
   monitor.reset();
 
   const property = await createProperty(page, {
-    name: `[E2E] Navigation ${Date.now()}`,
+    name: `${E2E_ENTITY_PREFIX} Navigation ${Date.now()}`,
   });
   propertyUrl = property.url;
 
   const room = await createRoom(page, property.id, {
-    name: `[E2E] Navigation Room ${Date.now()}`,
+    name: `${E2E_ENTITY_PREFIX} Navigation Room ${Date.now()}`,
   });
+  roomUrl = room.url;
 
   const tenant = await createTenant(page, {
-    firstName: "E2E",
+    firstName: E2E_ENTITY_PREFIX,
     lastName: `Navigation ${Date.now()}`,
   });
   tenantUrl = tenant.url;
@@ -111,12 +113,20 @@ test("contextual navigation connects property, room, tenant, inventory, and form
     await expect(page.getByTestId("room-vacant-state")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("room-parent-property-link")).toBeVisible();
     await assertAppHealthy(page, monitor, "end tenancy returns to room with parent context");
-    canCleanup = true;
   } finally {
-    if (canCleanup && tenantUrl) {
+    if (roomUrl) {
+      await page.goto(roomUrl, { waitUntil: "domcontentloaded" }).catch(() => undefined);
+      const endBtn = page.getByTestId("end-tenancy-btn");
+      if ((await endBtn.count().catch(() => 0)) > 0) {
+        await endBtn.click().catch(() => undefined);
+        await page.getByTestId("confirm-end-tenancy-btn").click().catch(() => undefined);
+        await expect(page.getByTestId("room-vacant-state")).toBeVisible({ timeout: 15_000 }).catch(() => undefined);
+      }
+    }
+    if (tenantUrl) {
       await deleteTenant(page, tenantUrl).catch(() => undefined);
     }
-    if (canCleanup && propertyUrl) {
+    if (propertyUrl) {
       await archiveProperty(page, propertyUrl).catch(() => undefined);
     }
   }

@@ -25,6 +25,7 @@ export async function POST(
   const { id } = (await context.params) as { id: string };
   const inspection = await prisma.inventoryInspection.findUnique({
     where: { id },
+    include: { items: { select: { id: true } } },
   });
 
   if (!inspection) {
@@ -41,6 +42,19 @@ export async function POST(
   const file = formData.get("file");
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "No file provided." }, { status: 400 });
+  }
+
+  const rawItemId = formData.get("inspectionItemId");
+  let inspectionItemId: string | null = null;
+  if (typeof rawItemId === "string" && rawItemId.length > 0) {
+    const allowed = new Set(inspection.items.map((i) => i.id));
+    if (!allowed.has(rawItemId)) {
+      return NextResponse.json(
+        { error: "Inspection item does not belong to this inspection." },
+        { status: 400 }
+      );
+    }
+    inspectionItemId = rawItemId;
   }
 
   if (!ALLOWED_MIME.has(file.type) || !ALLOWED_EXT.test(file.name)) {
@@ -82,6 +96,7 @@ export async function POST(
     data: {
       id: photoId,
       inspectionId: id,
+      inspectionItemId,
       fileName: file.name,
       fileType: file.type,
       fileSize: file.size,
@@ -91,6 +106,7 @@ export async function POST(
 
   return NextResponse.json({
     id: photo.id,
+    inspectionItemId: photo.inspectionItemId,
     fileName: photo.fileName,
     fileSize: photo.fileSize,
     fileType: photo.fileType,

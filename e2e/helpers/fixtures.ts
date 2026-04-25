@@ -9,7 +9,18 @@ import { assertAppHealthy, type AppMonitor } from "./monitor";
 async function collectPropertyPaths(page: Page) {
   await page.goto("/properties", { waitUntil: "networkidle" });
   return page.locator('[data-testid="property-link"]').evaluateAll((nodes) =>
-    nodes.map((node) => (node as HTMLAnchorElement).getAttribute("href")).filter(Boolean)
+    nodes
+      .map((node) => ({
+        href: (node as HTMLAnchorElement).getAttribute("href"),
+        text: node.textContent ?? "",
+      }))
+      .filter((entry): entry is { href: string; text: string } => Boolean(entry.href))
+      .sort((a, b) => {
+        const aIsTest = /\bE2E(?:_TEST)?\b/i.test(a.text);
+        const bIsTest = /\bE2E(?:_TEST)?\b/i.test(b.text);
+        return Number(aIsTest) - Number(bIsTest);
+      })
+      .map((entry) => entry.href)
   );
 }
 

@@ -1,9 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { login } from "./helpers/auth";
 import {
+  archiveProperty,
   createProperty,
   createRoom,
   createTenant,
+  deleteTenant,
   requireDestructive,
 } from "./helpers/crud";
 import { assertAppHealthy, attachAppMonitor } from "./helpers/monitor";
@@ -19,6 +21,7 @@ test("payment flow creates relationship-backed payments and records updates safe
 
   const monitor = attachAppMonitor(page);
   let roomUrl: string | null = null;
+  let propertyUrl: string | null = null;
   let tenantUrl: string | null = null;
   let tenantName = "";
 
@@ -26,6 +29,7 @@ test("payment flow creates relationship-backed payments and records updates safe
   monitor.reset();
 
   const property = await createProperty(page);
+  propertyUrl = property.url;
   const room = await createRoom(page, property.id, { monthlyRent: "1111", depositAmount: "1111" });
   roomUrl = room.url;
   const tenant = await createTenant(page);
@@ -66,6 +70,20 @@ test("payment flow creates relationship-backed payments and records updates safe
     await expect(page.getByText(room.name)).toBeVisible();
     await assertAppHealthy(page, monitor, "tenant detail relationship integrity");
   } finally {
-    // Leave this isolated fixture in local destructive runs; UI cleanup was slower than the behavior under test.
+    if (roomUrl) {
+      await page.goto(roomUrl, { waitUntil: "domcontentloaded" }).catch(() => undefined);
+      const endBtn = page.getByTestId("end-tenancy-btn");
+      if ((await endBtn.count().catch(() => 0)) > 0) {
+        await endBtn.click().catch(() => undefined);
+        await page.getByTestId("confirm-end-tenancy-btn").click().catch(() => undefined);
+        await expect(page.getByTestId("room-vacant-state")).toBeVisible({ timeout: 15_000 }).catch(() => undefined);
+      }
+    }
+    if (tenantUrl) {
+      await deleteTenant(page, tenantUrl).catch(() => undefined);
+    }
+    if (propertyUrl) {
+      await archiveProperty(page, propertyUrl).catch(() => undefined);
+    }
   }
 });

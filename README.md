@@ -1,4 +1,6 @@
-`rentalapp` is a Next.js landlord portal for properties, rooms, tenants, payments, and document management.
+`rentalapp` is a Next.js landlord portal for properties, rooms, tenants, payments, inventory inspections, PDFs, and document management.
+
+For AI/code-agent context, see `AI_HANDOFF.md`.
 
 ## Getting Started
 
@@ -64,6 +66,6 @@ Environment variables for E2E:
 - `E2E_EDITABLE_PROPERTY_ID`
 - `E2E_ENABLE_PROPERTY_CREATE`
 
-If `PLAYWRIGHT_BASE_URL` is not set, Playwright starts a local dev server at `http://127.0.0.1:3000`. When `PLAYWRIGHT_BASE_URL` is set, tests run against that deployment directly.
+If `PLAYWRIGHT_BASE_URL` is not set, Playwright starts a local dev server at `http://127.0.0.1:3000` using local `dev.db` and local file storage. When `PLAYWRIGHT_BASE_URL` is set, tests run against that deployment directly.
 
-The mutation-heavy flows use fixture-aware env vars when available. Set `E2E_ALLOW_DESTRUCTIVE=true` to enable create/archive style CRUD coverage, and set `E2E_ENABLE_PROPERTY_CREATE=true` only against a safe preview or staging dataset because it creates archived test properties.
+The mutation-heavy flows use fixture-aware env vars when available. Set `E2E_ALLOW_DESTRUCTIVE=true` to enable create/archive style CRUD coverage. Test-created entities use `E2E_ENTITY_PREFIX` (`E2E_TEST` by default) and should be cleaned up in `finally` blocks. Set `E2E_ENABLE_PROPERTY_CREATE=true` only against a safe preview or staging dataset because it creates archived test properties.

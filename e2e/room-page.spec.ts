@@ -5,8 +5,10 @@ import {
   createProperty,
   createRoom,
   createTenant,
+  deleteTenant,
   requireDestructive,
 } from "./helpers/crud";
+import { E2E_ENTITY_PREFIX } from "./helpers/env";
 import { assertAppHealthy, attachAppMonitor } from "./helpers/monitor";
 
 function formatDateLabel(date: Date) {
@@ -31,6 +33,8 @@ test("room tenancy, deposit, tenant navigation, and contract workflow stay consi
   const monitor = attachAppMonitor(page);
   let propertyUrl: string | null = null;
   let roomUrl: string | null = null;
+  let tenantUrl: string | null = null;
+  let quickTenantUrl: string | null = null;
   let tenantName = "";
   let quickCreatedTenantName = "";
 
@@ -38,17 +42,18 @@ test("room tenancy, deposit, tenant navigation, and contract workflow stay consi
   monitor.reset();
 
   const property = await createProperty(page, {
-    name: `E2E Tenancy Property ${Date.now()}`,
+    name: `${E2E_ENTITY_PREFIX} Tenancy Property ${Date.now()}`,
     notes: "room tenancy fixture",
   });
   propertyUrl = property.url;
   const room = await createRoom(page, property.id, {
-    name: `E2E Tenancy Room ${Date.now()}`,
+    name: `${E2E_ENTITY_PREFIX} Tenancy Room ${Date.now()}`,
     monthlyRent: "1234",
     depositAmount: "1234",
   });
   roomUrl = room.url;
   const tenant = await createTenant(page);
+  tenantUrl = tenant.url;
   tenantName = `${tenant.firstName} ${tenant.lastName}`;
 
   try {
@@ -262,7 +267,7 @@ test("room tenancy, deposit, tenant navigation, and contract workflow stay consi
     await page.getByTestId("create-new-tenant-tab").click();
     await page.locator('input[name="firstName"]').last().fill("Modal");
     await page.locator('input[name="lastName"]').last().fill(`Tenant ${quickCreateStamp}`);
-    await page.locator('input[name="email"]').last().fill(`modal+${quickCreateStamp}@example.com`);
+    await page.locator('input[name="email"]').last().fill(`${E2E_ENTITY_PREFIX.toLowerCase()}-modal+${quickCreateStamp}@example.com`);
     await page.getByTestId("create-tenant-submit").click();
     await expect(page.getByTestId("assign-existing-tab")).toHaveClass(/shadow-sm/);
     await expect(page.getByTestId("assign-tenant-select")).toHaveValue(/.+/);
@@ -274,10 +279,27 @@ test("room tenancy, deposit, tenant navigation, and contract workflow stay consi
     await page.locator('input[name="moveInDate"]').fill("2026-01-01");
     await page.getByTestId("assign-tenant-submit").click();
     await expect(page.getByTestId("room-current-tenant-card")).toContainText(quickCreatedTenantName);
+    const quickTenantHref = await page.getByTestId("room-tenant-name-link").getAttribute("href");
+    quickTenantUrl = quickTenantHref ? new URL(quickTenantHref, page.url()).toString() : null;
     await assertAppHealthy(page, monitor, "new tenant can be created and assigned from modal");
   } finally {
+    if (roomUrl) {
+      await page.goto(roomUrl, { waitUntil: "domcontentloaded" }).catch(() => undefined);
+      const endBtn = page.getByTestId("end-tenancy-btn");
+      if ((await endBtn.count().catch(() => 0)) > 0) {
+        await endBtn.click().catch(() => undefined);
+        await page.getByTestId("confirm-end-tenancy-btn").click().catch(() => undefined);
+        await expect(page.getByTestId("room-vacant-state")).toBeVisible({ timeout: 15_000 }).catch(() => undefined);
+      }
+    }
+    if (quickTenantUrl) {
+      await deleteTenant(page, quickTenantUrl).catch(() => undefined);
+    }
+    if (tenantUrl) {
+      await deleteTenant(page, tenantUrl).catch(() => undefined);
+    }
     if (propertyUrl) {
-      await archiveProperty(page, propertyUrl);
+      await archiveProperty(page, propertyUrl).catch(() => undefined);
     }
   }
 });

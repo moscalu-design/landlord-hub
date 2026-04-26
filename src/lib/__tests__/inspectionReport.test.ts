@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildInspectionReportPdf,
   buildReportFilename,
+  formatReportItemValue,
   formatReportDate,
   type InspectionReportData,
 } from "../inspectionReport";
@@ -28,6 +29,7 @@ function baseData(): InspectionReportData {
         itemName: "Double bed",
         condition: "GOOD",
         quantity: 1,
+        estimatedValue: 350,
         notes: null,
       },
       {
@@ -35,6 +37,7 @@ function baseData(): InspectionReportData {
         itemName: "Desk",
         condition: "DAMAGED",
         quantity: 1,
+        estimatedValue: null,
         notes: "Scratch on left leg",
       },
     ],
@@ -99,6 +102,24 @@ describe("formatReportDate", () => {
   });
 });
 
+describe("formatReportItemValue", () => {
+  it("formats single item estimated value", () => {
+    expect(formatReportItemValue({ estimatedValue: 125, quantity: 1 })).toBe(
+      "Est. value: €125.00"
+    );
+  });
+
+  it("formats per-item and total value for quantities above one", () => {
+    expect(formatReportItemValue({ estimatedValue: 40, quantity: 3 })).toBe(
+      "Est. value: €40.00 each · €120.00 total"
+    );
+  });
+
+  it("omits missing estimated values", () => {
+    expect(formatReportItemValue({ estimatedValue: null, quantity: 1 })).toBeNull();
+  });
+});
+
 describe("buildInspectionReportPdf", () => {
   it("produces a valid PDF with no photos", async () => {
     const out = await buildInspectionReportPdf(baseData());
@@ -152,6 +173,7 @@ describe("buildInspectionReportPdf", () => {
       itemName: `Inventory Item ${i + 1}`,
       condition: i % 2 === 0 ? "GOOD" : "FAIR",
       quantity: 1,
+      estimatedValue: i % 4 === 0 ? 100 + i : null,
       notes: i % 3 === 0 ? "Some notes about this item" : null,
     }));
     const out = await buildInspectionReportPdf(data);
@@ -208,4 +230,3 @@ describe("buildInspectionReportPdf", () => {
     assertPdfBytes(out);
   });
 });
-

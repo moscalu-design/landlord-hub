@@ -35,7 +35,14 @@ export async function GET(
           room: { include: { property: true } },
         },
       },
-      items: { orderBy: { createdAt: "asc" } },
+      items: {
+        include: {
+          inventoryItem: {
+            select: { estimatedValue: true },
+          },
+        },
+        orderBy: { createdAt: "asc" },
+      },
       photos: { orderBy: { uploadedAt: "asc" } },
     },
   });
@@ -98,6 +105,7 @@ export async function GET(
       itemName: it.itemName,
       condition: it.condition,
       quantity: it.quantity,
+      estimatedValue: it.inventoryItem?.estimatedValue ?? null,
       notes: it.notes,
     })),
     photos,

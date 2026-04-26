@@ -20,6 +20,7 @@ export type InspectionReportItem = {
   itemName: string;
   condition: string;
   quantity: number;
+  estimatedValue: number | null;
   notes: string | null;
 };
 
@@ -65,6 +66,24 @@ const CONDITION_TEXT: Record<string, string> = {
   DAMAGED: "Damaged",
   MISSING: "Missing",
 };
+
+const EUR_FORMATTER = new Intl.NumberFormat("en-GB", {
+  style: "currency",
+  currency: "EUR",
+});
+
+export function formatReportItemValue(item: Pick<InspectionReportItem, "estimatedValue" | "quantity">): string | null {
+  if (item.estimatedValue === null || item.estimatedValue === undefined) {
+    return null;
+  }
+
+  const unitValue = EUR_FORMATTER.format(item.estimatedValue);
+  if (item.quantity > 1) {
+    return `Est. value: ${unitValue} each · ${EUR_FORMATTER.format(item.estimatedValue * item.quantity)} total`;
+  }
+
+  return `Est. value: ${unitValue}`;
+}
 
 function conditionColor(condition: string) {
   switch (condition) {
@@ -480,6 +499,14 @@ async function drawItemsSection(
       color: conditionColor(item.condition),
     });
     writer.y -= 14;
+
+    const estimatedValueLabel = formatReportItemValue(item);
+    if (estimatedValueLabel) {
+      writer.drawWrapped(estimatedValueLabel, {
+        size: 8.5,
+        color: COLORS.muted,
+      });
+    }
 
     if (item.notes && item.notes.trim()) {
       writer.drawWrapped(item.notes, {

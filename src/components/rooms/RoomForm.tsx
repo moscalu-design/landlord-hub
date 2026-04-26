@@ -134,7 +134,7 @@ export function RoomForm({ propertyId, room }: RoomFormProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
@@ -144,17 +144,6 @@ export function RoomForm({ propertyId, room }: RoomFormProps) {
               className="w-4 h-4 rounded border-slate-300 text-blue-500 focus:ring-blue-500"
             />
             <span className="text-sm font-medium text-slate-700">Furnished</span>
-          </label>
-
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              name="privateBathroom"
-              defaultChecked={room?.privateBathroom ?? false}
-              value="true"
-              className="w-4 h-4 rounded border-slate-300 text-blue-500 focus:ring-blue-500"
-            />
-            <span className="text-sm font-medium text-slate-700">Private Bathroom</span>
           </label>
         </div>
 

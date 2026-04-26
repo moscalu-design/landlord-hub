@@ -153,11 +153,6 @@ export default async function RoomDetailPage({
             <p className="text-xs text-slate-500">Furnished</p>
             <p className="text-base font-bold text-slate-800">{room.furnished ? "Yes" : "No"}</p>
           </div>
-          <div className="hidden sm:block w-px h-8 bg-slate-200" />
-          <div className="min-w-0">
-            <p className="text-xs text-slate-500">Private Bathroom</p>
-            <p className="text-base font-bold text-slate-800">{room.privateBathroom ? "Yes" : "No"}</p>
-          </div>
         </div>
 
         {/* Current Tenant or Assign */}

@@ -30,7 +30,6 @@ function parseRoomFormData(formData: FormData) {
     floor: formData.get("floor") || undefined,
     sizeM2: formData.get("sizeM2") || undefined,
     furnished: formData.get("furnished") === "true",
-    privateBathroom: formData.get("privateBathroom") === "true",
     monthlyRent: formData.get("monthlyRent"),
     depositAmount: formData.get("depositAmount"),
     status: formData.get("status") || "VACANT",
@@ -89,10 +88,14 @@ export async function updateRoom(id: string, propertyId: string, formData: FormD
   await prisma.room.update({
     where: { id },
     data: {
-      ...validated,
+      name: validated.name,
       floor: validated.floor || null,
-      notes: validated.notes || null,
       sizeM2: validated.sizeM2 ?? null,
+      furnished: validated.furnished,
+      monthlyRent: validated.monthlyRent,
+      depositAmount: validated.depositAmount,
+      status: validated.status,
+      notes: validated.notes || null,
     },
   });
 

@@ -4,6 +4,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { MortgageDetailView } from "@/components/properties/MortgagesSection";
 import { PropertySubnav } from "@/components/properties/PropertySubnav";
 import prisma from "@/lib/prisma";
+import { requireUser } from "@/lib/currentUser";
 
 export default async function MortgageDetailPage({
   params,
@@ -11,9 +12,10 @@ export default async function MortgageDetailPage({
   params: Promise<{ id: string; mortgageId: string }>;
 }) {
   const { id, mortgageId } = await params;
+  const user = await requireUser();
 
   const property = await prisma.property.findUnique({
-    where: { id },
+    where: { id, userId: user.id },
     include: {
       mortgages: {
         include: {

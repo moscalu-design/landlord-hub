@@ -1,5 +1,8 @@
 import { auth } from "@/lib/auth";
 import { TopBar } from "@/components/layout/TopBar";
+import { SettingsExportButton } from "@/components/settings/SettingsExportButton";
+import { TwoFactorSection } from "@/components/settings/TwoFactorSection";
+import prisma from "@/lib/prisma";
 
 const ROADMAP = [
   "Change password",
@@ -11,6 +14,12 @@ const ROADMAP = [
 
 export default async function SettingsPage() {
   const session = await auth();
+  const user = session?.user?.id
+    ? await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { phone: true, role: true, twoFactorEnabled: true },
+      })
+    : null;
 
   return (
     <div className="flex flex-col flex-1">
@@ -27,9 +36,22 @@ export default async function SettingsPage() {
             <div className="min-w-0">
               <p className="font-medium text-slate-800 truncate">{session?.user?.name}</p>
               <p className="text-sm text-slate-500 truncate">{session?.user?.email}</p>
+              {user?.phone && <p className="text-sm text-slate-500 truncate">{user.phone}</p>}
+              <p className="text-xs text-slate-400 truncate">Role: {user?.role ?? "USER"}</p>
             </div>
           </div>
         </div>
+
+        <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6">
+          <h2 className="text-sm font-semibold text-slate-800">Privacy</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Your rental data is private to your account. Other users cannot access it unless you explicitly invite them or grant support access.
+          </p>
+        </div>
+
+        <TwoFactorSection enabled={Boolean(user?.twoFactorEnabled)} />
+
+        <SettingsExportButton />
 
         {/* Roadmap */}
         <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6">

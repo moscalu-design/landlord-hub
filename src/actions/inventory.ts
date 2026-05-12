@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
+import { requireUser } from "@/lib/currentUser";
 import { deleteStoredDocument } from "@/lib/documentStorage";
 import prisma from "@/lib/prisma";
 import {
@@ -12,9 +12,7 @@ import {
 import { z } from "zod";
 
 async function requireAuth() {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
-  return session.user;
+  return requireUser();
 }
 
 // ─── Room Inventory Items ──────────────────────────────────────────────────────
@@ -23,7 +21,9 @@ export async function createInventoryItem(
   roomId: string,
   formData: FormData
 ): Promise<{ id: string }> {
-  await requireAuth();
+  const user = await requireAuth();
+  const room = await prisma.room.findFirst({ where: { id: roomId, userId: user.id }, select: { id: true } });
+  if (!room) throw new Error("Room not found.");
 
   const validated = InventoryItemSchema.parse({
     name: formData.get("name"),
@@ -36,6 +36,7 @@ export async function createInventoryItem(
 
   const item = await prisma.roomInventoryItem.create({
     data: {
+      userId: user.id,
       roomId,
       name: validated.name,
       category: validated.category,
@@ -55,7 +56,7 @@ export async function updateInventoryItem(
   roomId: string,
   formData: FormData
 ): Promise<void> {
-  await requireAuth();
+  const user = await requireAuth();
 
   const validated = InventoryItemSchema.parse({
     name: formData.get("name"),
@@ -67,7 +68,7 @@ export async function updateInventoryItem(
   });
 
   await prisma.roomInventoryItem.update({
-    where: { id, roomId },
+    where: { id, roomId, userId: user.id },
     data: {
       name: validated.name,
       category: validated.category,
@@ -82,8 +83,8 @@ export async function updateInventoryItem(
 }
 
 export async function deleteInventoryItem(id: string, roomId: string): Promise<void> {
-  await requireAuth();
-  await prisma.roomInventoryItem.delete({ where: { id, roomId } });
+  const user = await requireAuth();
+  await prisma.roomInventoryItem.delete({ where: { id, roomId, userId: user.id } });
   revalidatePath(`/rooms/${roomId}/inventory`);
 }
 
@@ -102,11 +103,11 @@ export async function createInspection(
   id: string;
   items: { id: string; inventoryItemId: string | null }[];
 }> {
-  await requireAuth();
+  const user = await requireAuth();
 
   const validated = InspectionWithItemsSchema.parse(data);
   const occupancy = await prisma.occupancy.findUnique({
-    where: { id: occupancyId },
+    where: { id: occupancyId, userId: user.id },
     select: {
       roomId: true,
       inspections: {
@@ -127,7 +128,7 @@ export async function createInspection(
 
   const requestedItemIds = validated.items.map((item) => item.inventoryItemId);
   const roomItems = await prisma.roomInventoryItem.findMany({
-    where: { roomId, id: { in: requestedItemIds } },
+    where: { roomId, userId: user.id, id: { in: requestedItemIds } },
     select: { id: true, name: true, quantity: true },
   });
   const roomItemById = new Map(roomItems.map((item) => [item.id, item]));
@@ -138,6 +139,7 @@ export async function createInspection(
 
   const inspection = await prisma.inventoryInspection.create({
     data: {
+      userId: user.id,
       occupancyId,
       type: validated.inspection.type,
       date: new Date(validated.inspection.date),
@@ -151,6 +153,7 @@ export async function createInspection(
 
           return {
             inventoryItemId: item.inventoryItemId,
+            userId: user.id,
             itemName: roomItem.name,
             condition: item.condition,
             quantity: item.quantity,
@@ -178,9 +181,9 @@ export async function deleteInspection(
   id: string,
   roomId: string
 ): Promise<void> {
-  await requireAuth();
+  const user = await requireAuth();
   const inspection = await prisma.inventoryInspection.findUnique({
-    where: { id },
+    where: { id, userId: user.id },
     include: { photos: true },
   });
 
@@ -196,6 +199,6 @@ export async function deleteInspection(
     }
   }
 
-  await prisma.inventoryInspection.delete({ where: { id } });
+  await prisma.inventoryInspection.delete({ where: { id, userId: user.id } });
   revalidatePath(`/rooms/${roomId}/inventory`);
 }

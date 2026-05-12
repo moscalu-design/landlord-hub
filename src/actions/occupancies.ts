@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { requireUser } from "@/lib/currentUser";
 import prisma from "@/lib/prisma";
 import { OccupancySchema } from "@/lib/validations";
 import {
@@ -14,9 +14,7 @@ import {
 } from "@/lib/occupancyPayments";
 
 async function requireAuth() {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
-  return session.user;
+  return requireUser();
 }
 
 function periodIsBefore(a: PaymentPeriod, b: PaymentPeriod) {
@@ -41,10 +39,14 @@ export async function createOccupancy(formData: FormData) {
   });
 
   // Prevent assigning to an already-occupied room or a tenant with an active lease
-  const [occupiedRoom, activeTenantLease] = await Promise.all([
-    prisma.occupancy.findFirst({ where: { roomId: validated.roomId, status: "ACTIVE" } }),
-    prisma.occupancy.findFirst({ where: { tenantId: validated.tenantId, status: "ACTIVE" } }),
+  const [roomForUser, tenantForUser, occupiedRoom, activeTenantLease] = await Promise.all([
+    prisma.room.findFirst({ where: { id: validated.roomId, userId: user.id }, select: { id: true } }),
+    prisma.tenant.findFirst({ where: { id: validated.tenantId, userId: user.id }, select: { id: true } }),
+    prisma.occupancy.findFirst({ where: { roomId: validated.roomId, status: "ACTIVE", userId: user.id } }),
+    prisma.occupancy.findFirst({ where: { tenantId: validated.tenantId, status: "ACTIVE", userId: user.id } }),
   ]);
+  if (!roomForUser) throw new Error("Room not found.");
+  if (!tenantForUser) throw new Error("Tenant not found.");
   if (occupiedRoom) throw new Error("This room already has an active tenant.");
   if (activeTenantLease) throw new Error("This tenant already has an active lease.");
 
@@ -53,6 +55,7 @@ export async function createOccupancy(formData: FormData) {
 
   const occupancy = await prisma.occupancy.create({
     data: {
+      userId: user.id,
       roomId: validated.roomId,
       tenantId: validated.tenantId,
       leaseStart,
@@ -72,18 +75,19 @@ export async function createOccupancy(formData: FormData) {
   await prisma.deposit.create({
     data: {
       occupancyId: occupancy.id,
+      userId: user.id,
       required: validated.depositRequired,
     },
   });
 
   // Set room status to OCCUPIED
   await prisma.room.update({
-    where: { id: validated.roomId },
+    where: { id: validated.roomId, userId: user.id },
     data: { status: "OCCUPIED" },
   });
 
   const room = await prisma.room.findUnique({
-    where: { id: validated.roomId },
+    where: { id: validated.roomId, userId: user.id },
     include: { property: true },
   });
 
@@ -105,6 +109,7 @@ export async function createOccupancy(formData: FormData) {
   // already-started tenancies so early payments can target the next rent month.
   const periods = listPaymentPeriodsForOccupancy({ leaseStart });
   const payments = periods.map((period) => ({
+    userId: user.id,
     occupancyId: occupancy.id,
     periodYear: period.year,
     periodMonth: period.month,
@@ -139,7 +144,7 @@ export async function endOccupancy(occupancyId: string, formData?: FormData) {
   refundDueDate.setDate(refundDueDate.getDate() + 30);
 
   const occupancy = await prisma.occupancy.update({
-    where: { id: occupancyId },
+    where: { id: occupancyId, userId: user.id },
     data: {
       status: "ENDED",
       moveOutDate,
@@ -150,14 +155,14 @@ export async function endOccupancy(occupancyId: string, formData?: FormData) {
   // Set deposit refund due date when tenancy ends
   if (occupancy.deposit && !occupancy.deposit.refunded) {
     await prisma.deposit.update({
-      where: { id: occupancy.deposit.id },
+      where: { id: occupancy.deposit.id, userId: user.id },
       data: { refundDueDate },
     });
   }
 
   // Set room back to VACANT
   await prisma.room.update({
-    where: { id: occupancy.roomId },
+    where: { id: occupancy.roomId, userId: user.id },
     data: { status: "VACANT" },
   });
 
@@ -180,10 +185,10 @@ export async function endOccupancy(occupancyId: string, formData?: FormData) {
 }
 
 export async function updateOccupancy(occupancyId: string, formData: FormData) {
-  await requireAuth();
+  const user = await requireAuth();
 
   const occupancy = await prisma.occupancy.findUnique({
-    where: { id: occupancyId },
+    where: { id: occupancyId, userId: user.id },
     include: {
       payments: {
         orderBy: [{ periodYear: "asc" }, { periodMonth: "asc" }],
@@ -256,6 +261,7 @@ export async function updateOccupancy(occupancyId: string, formData: FormData) {
   const paymentsToCreate = targetPeriods
     .filter((period) => !existingKeys.has(periodKey(period)))
     .map((period) => ({
+      userId: user.id,
       occupancyId,
       periodYear: period.year,
       periodMonth: period.month,
@@ -271,7 +277,7 @@ export async function updateOccupancy(occupancyId: string, formData: FormData) {
 
   await prisma.$transaction(async (tx) => {
     await tx.occupancy.update({
-      where: { id: occupancyId },
+      where: { id: occupancyId, userId: user.id },
       data: {
         leaseStart: newLeaseStart,
         leaseEnd: validated.leaseEnd ? new Date(validated.leaseEnd) : null,
@@ -284,6 +290,7 @@ export async function updateOccupancy(occupancyId: string, formData: FormData) {
     if (removablePayments.length > 0) {
       await tx.payment.deleteMany({
         where: {
+          userId: user.id,
           id: {
             in: removablePayments.map((payment) => payment.id),
           },
@@ -306,7 +313,7 @@ export async function updateOccupancy(occupancyId: string, formData: FormData) {
           if (!period) return Promise.resolve();
 
           return tx.payment.update({
-            where: { id: payment.id },
+            where: { id: payment.id, userId: user.id },
             data: {
               dueDate: getPaymentDueDate({
                 leaseStart: newLeaseStart,

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { TopBar } from "@/components/layout/TopBar";
 import { TenantForm } from "@/components/tenants/TenantForm";
 import prisma from "@/lib/prisma";
+import { requireUser } from "@/lib/currentUser";
 
 export default async function EditTenantPage({
   params,
@@ -10,7 +11,8 @@ export default async function EditTenantPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const tenant = await prisma.tenant.findUnique({ where: { id } });
+  const user = await requireUser();
+  const tenant = await prisma.tenant.findUnique({ where: { id, userId: user.id } });
   if (!tenant) notFound();
 
   return (

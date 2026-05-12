@@ -6,6 +6,7 @@ import { DocumentsSection } from "@/components/documents/DocumentsSection";
 import { DeleteTenantForm } from "@/components/tenants/DeleteTenantForm";
 import prisma from "@/lib/prisma";
 import { computePaymentStatus, formatCurrency, formatDate, formatMonthYear } from "@/lib/utils";
+import { requireUser } from "@/lib/currentUser";
 
 export default async function TenantDetailPage({
   params,
@@ -13,10 +14,11 @@ export default async function TenantDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const user = await requireUser();
 
   const [tenant, rawDocs] = await Promise.all([
     prisma.tenant.findUnique({
-    where: { id },
+    where: { id, userId: user.id },
     include: {
       occupancies: {
         include: {
@@ -32,7 +34,7 @@ export default async function TenantDetailPage({
     },
   }),
     prisma.tenantDocument.findMany({
-      where: { tenantId: id },
+      where: { tenantId: id, userId: user.id },
       select: { id: true, type: true, fileName: true, fileSize: true, uploadedAt: true },
     }),
   ]);

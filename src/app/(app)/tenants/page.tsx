@@ -4,9 +4,12 @@ import { TenantStatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import prisma from "@/lib/prisma";
 import { formatDate } from "@/lib/utils";
+import { requireUser } from "@/lib/currentUser";
 
 async function getTenants() {
+  const user = await requireUser();
   return prisma.tenant.findMany({
+    where: { userId: user.id },
     include: {
       occupancies: {
         where: { status: "ACTIVE" },

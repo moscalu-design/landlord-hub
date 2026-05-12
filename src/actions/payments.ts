@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
+import { requireUser } from "@/lib/currentUser";
 import { applyDepositTransaction } from "@/lib/depositUtils";
 import { toBillingDate } from "@/lib/occupancyPayments";
 import prisma from "@/lib/prisma";
@@ -9,10 +9,7 @@ import { PaymentSchema, DepositTransactionSchema } from "@/lib/validations";
 import { computePaymentStatus } from "@/lib/utils";
 
 async function requireAuth() {
-  const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId) throw new Error("Unauthorized");
-  return { ...session.user, id: userId };
+  return requireUser();
 }
 
 export async function recordPayment(paymentId: string, formData: FormData) {
@@ -25,7 +22,7 @@ export async function recordPayment(paymentId: string, formData: FormData) {
     notes: formData.get("notes") || undefined,
   });
 
-  const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
+  const payment = await prisma.payment.findUnique({ where: { id: paymentId, userId: user.id } });
   if (!payment) throw new Error("Payment not found");
 
   const status = computePaymentStatus({
@@ -36,7 +33,7 @@ export async function recordPayment(paymentId: string, formData: FormData) {
   });
 
   const updated = await prisma.payment.update({
-    where: { id: paymentId },
+    where: { id: paymentId, userId: user.id },
     data: {
       amountPaid: validated.amountPaid,
       status,
@@ -67,9 +64,9 @@ export async function recordPayment(paymentId: string, formData: FormData) {
 }
 
 export async function waivePayment(paymentId: string) {
-  await requireAuth();
+  const user = await requireAuth();
   const payment = await prisma.payment.update({
-    where: { id: paymentId },
+    where: { id: paymentId, userId: user.id },
     data: { status: "WAIVED" },
     include: { occupancy: true },
   });

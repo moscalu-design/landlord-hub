@@ -3,6 +3,7 @@ import Link from "next/link";
 import { TopBar } from "@/components/layout/TopBar";
 import { RoomForm } from "@/components/rooms/RoomForm";
 import prisma from "@/lib/prisma";
+import { requireUser } from "@/lib/currentUser";
 
 export default async function EditRoomPage({
   params,
@@ -10,8 +11,9 @@ export default async function EditRoomPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const user = await requireUser();
   const room = await prisma.room.findUnique({
-    where: { id },
+    where: { id, userId: user.id },
     include: { property: true },
   });
   if (!room) notFound();

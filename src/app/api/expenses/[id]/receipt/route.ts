@@ -23,7 +23,7 @@ export async function GET(
 
   const { id } = await params;
 
-  const expense = await prisma.propertyExpense.findUnique({ where: { id } });
+  const expense = await prisma.propertyExpense.findUnique({ where: { id, userId: session.user.id } });
   if (!expense?.receiptStorageUrl || !expense.receiptFileName) {
     return NextResponse.json({ error: "Receipt not found." }, { status: 404 });
   }
@@ -71,7 +71,7 @@ export async function POST(
 
   const { id } = await params;
 
-  const expense = await prisma.propertyExpense.findUnique({ where: { id } });
+  const expense = await prisma.propertyExpense.findUnique({ where: { id, userId: session.user.id } });
   if (!expense) {
     return NextResponse.json({ error: "Expense not found." }, { status: 404 });
   }
@@ -107,7 +107,7 @@ export async function POST(
   }
 
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "pdf";
-  const storagePath = `property-expenses/${id}/receipt.${ext}`;
+  const storagePath = `users/${session.user.id}/property-expenses/${id}/receipt.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
 
   let storedFile: Awaited<ReturnType<typeof storeDocument>>;
@@ -134,7 +134,7 @@ export async function POST(
 
   const now = new Date();
   await prisma.propertyExpense.update({
-    where: { id },
+    where: { id, userId: session.user.id },
     data: {
       receiptStorageUrl: storedFile.url,
       receiptFileName: file.name,
@@ -162,7 +162,7 @@ export async function DELETE(
 
   const { id } = await params;
 
-  const expense = await prisma.propertyExpense.findUnique({ where: { id } });
+  const expense = await prisma.propertyExpense.findUnique({ where: { id, userId: session.user.id } });
   if (!expense) {
     return NextResponse.json({ error: "Expense not found." }, { status: 404 });
   }
@@ -178,7 +178,7 @@ export async function DELETE(
   }
 
   await prisma.propertyExpense.update({
-    where: { id },
+    where: { id, userId: session.user.id },
     data: {
       receiptStorageUrl: null,
       receiptFileName: null,

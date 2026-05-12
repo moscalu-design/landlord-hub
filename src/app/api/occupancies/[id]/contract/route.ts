@@ -23,7 +23,7 @@ export async function GET(
 
   const { id } = await params;
 
-  const occupancy = await prisma.occupancy.findUnique({ where: { id } });
+  const occupancy = await prisma.occupancy.findUnique({ where: { id, userId: session.user.id } });
   if (!occupancy?.contractStorageUrl || !occupancy.contractFileName) {
     return NextResponse.json({ error: "Contract not found." }, { status: 404 });
   }
@@ -71,7 +71,7 @@ export async function POST(
 
   const { id } = await params;
 
-  const occupancy = await prisma.occupancy.findUnique({ where: { id } });
+  const occupancy = await prisma.occupancy.findUnique({ where: { id, userId: session.user.id } });
   if (!occupancy) {
     return NextResponse.json({ error: "Occupancy not found." }, { status: 404 });
   }
@@ -109,7 +109,7 @@ export async function POST(
     return NextResponse.json({ error: "File is empty." }, { status: 400 });
   }
 
-  const storagePath = `occupancy-contracts/${id}/contract.pdf`;
+  const storagePath = `users/${session.user.id}/occupancy-contracts/${id}/contract.pdf`;
   const buffer = Buffer.from(await file.arrayBuffer());
 
   let storedFile: Awaited<ReturnType<typeof storeDocument>>;
@@ -136,7 +136,7 @@ export async function POST(
 
   const now = new Date();
   await prisma.occupancy.update({
-    where: { id },
+    where: { id, userId: session.user.id },
     data: {
       contractStorageUrl: storedFile.url,
       contractFileName: file.name,
@@ -164,7 +164,7 @@ export async function DELETE(
 
   const { id } = await params;
 
-  const occupancy = await prisma.occupancy.findUnique({ where: { id } });
+  const occupancy = await prisma.occupancy.findUnique({ where: { id, userId: session.user.id } });
   if (!occupancy) {
     return NextResponse.json({ error: "Occupancy not found." }, { status: 404 });
   }
@@ -183,7 +183,7 @@ export async function DELETE(
   }
 
   await prisma.occupancy.update({
-    where: { id },
+    where: { id, userId: session.user.id },
     data: {
       contractStorageUrl: null,
       contractFileName: null,

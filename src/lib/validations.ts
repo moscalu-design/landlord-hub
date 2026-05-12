@@ -1,5 +1,27 @@
 import { z } from "zod";
 
+export const PhoneSchema = z
+  .string()
+  .trim()
+  .min(7, "Phone number is too short")
+  .max(30, "Phone number is too long")
+  .regex(/^\+?[0-9][0-9\s().-]{6,29}$/, "Enter a valid phone number");
+
+export const SignupSchema = z
+  .object({
+    name: z.string().trim().min(1, "Name is required").max(100),
+    email: z.string().trim().email("Invalid email address").toLowerCase(),
+    phone: PhoneSchema,
+    password: z.string().min(8, "Password must be at least 8 characters").max(200),
+    confirmPassword: z.string().min(1, "Confirm your password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+export type SignupInput = z.infer<typeof SignupSchema>;
+
 // ─── Property ─────────────────────────────────────────────────────────────────
 
 export const PropertySchema = z.object({

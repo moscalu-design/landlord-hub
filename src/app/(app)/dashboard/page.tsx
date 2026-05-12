@@ -5,8 +5,10 @@ import { PaymentStatusBadge } from "@/components/shared/StatusBadge";
 import { summarizeRooms } from "@/lib/roomOccupancy";
 import prisma from "@/lib/prisma";
 import { computePaymentStatus, formatCurrency, formatDate } from "@/lib/utils";
+import { requireUser } from "@/lib/currentUser";
 
 async function getDashboardData() {
+  const user = await requireUser();
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
@@ -17,9 +19,9 @@ async function getDashboardData() {
     currentMonthPayments,
     recentActivity,
   ] = await Promise.all([
-    prisma.property.findMany({ where: { status: { not: "ARCHIVED" } } }),
+    prisma.property.findMany({ where: { userId: user.id, status: { not: "ARCHIVED" } } }),
     prisma.room.findMany({
-      where: { property: { status: { not: "ARCHIVED" } } },
+      where: { userId: user.id, property: { status: { not: "ARCHIVED" } } },
       include: {
         occupancies: {
           where: { status: "ACTIVE" },
@@ -28,7 +30,7 @@ async function getDashboardData() {
       },
     }),
     prisma.payment.findMany({
-      where: { periodYear: year, periodMonth: month },
+      where: { userId: user.id, periodYear: year, periodMonth: month },
       include: {
         occupancy: {
           include: {
@@ -40,6 +42,7 @@ async function getDashboardData() {
       orderBy: { dueDate: "asc" },
     }),
     prisma.activityLog.findMany({
+      where: { userId: user.id },
       orderBy: { createdAt: "desc" },
       take: 8,
       include: { property: true, room: true, tenant: true },

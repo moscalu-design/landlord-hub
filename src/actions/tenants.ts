@@ -2,14 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { requireUser } from "@/lib/currentUser";
 import prisma from "@/lib/prisma";
 import { TenantSchema } from "@/lib/validations";
 
 async function requireAuth() {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
-  return session.user;
+  return requireUser();
 }
 
 function parseTenantFormData(formData: FormData) {
@@ -58,7 +56,7 @@ export async function createTenant(formData: FormData) {
   const validated = parseTenantFormData(formData);
 
   const tenant = await prisma.tenant.create({
-    data: buildTenantCreateData(validated),
+    data: { ...buildTenantCreateData(validated), userId: user.id },
   });
 
   await prisma.activityLog.create({
@@ -86,7 +84,7 @@ export async function createTenantForAssignment(
     const validated = parseTenantFormData(formData);
 
     const existing = await prisma.tenant.findUnique({
-      where: { email: validated.email },
+      where: { userId_email: { userId: user.id, email: validated.email } },
       select: { id: true },
     });
 
@@ -98,7 +96,7 @@ export async function createTenantForAssignment(
     }
 
     const tenant = await prisma.tenant.create({
-      data: buildTenantCreateData(validated),
+      data: { ...buildTenantCreateData(validated), userId: user.id },
     });
 
     await prisma.activityLog.create({
@@ -133,11 +131,11 @@ export async function createTenantForAssignment(
 }
 
 export async function updateTenant(id: string, formData: FormData) {
-  await requireAuth();
+  const user = await requireAuth();
   const validated = parseTenantFormData(formData);
 
   await prisma.tenant.update({
-    where: { id },
+    where: { id, userId: user.id },
     data: buildTenantCreateData(validated),
   });
 
@@ -147,10 +145,10 @@ export async function updateTenant(id: string, formData: FormData) {
 }
 
 export async function deleteTenant(id: string) {
-  await requireAuth();
+  const user = await requireAuth();
 
   const activeOccupancy = await prisma.occupancy.findFirst({
-    where: { tenantId: id, status: "ACTIVE" },
+    where: { tenantId: id, status: "ACTIVE", userId: user.id },
     select: { id: true },
   });
 
@@ -158,7 +156,7 @@ export async function deleteTenant(id: string) {
     throw new Error("Cannot delete a tenant with an active tenancy.");
   }
 
-  await prisma.tenant.delete({ where: { id } });
+  await prisma.tenant.delete({ where: { id, userId: user.id } });
 
   revalidatePath("/tenants");
   redirect("/tenants");

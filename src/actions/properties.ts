@@ -2,14 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { requireUser } from "@/lib/currentUser";
 import prisma from "@/lib/prisma";
 import { PropertySchema } from "@/lib/validations";
 
 async function requireAuth() {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
-  return session.user;
+  return requireUser();
 }
 
 export async function createProperty(formData: FormData) {
@@ -27,6 +25,7 @@ export async function createProperty(formData: FormData) {
 
   const property = await prisma.property.create({
     data: {
+      userId: user.id,
       ...validated,
       notes: validated.notes || null,
       postcode: validated.postcode || null,
@@ -49,7 +48,7 @@ export async function createProperty(formData: FormData) {
 }
 
 export async function updateProperty(id: string, formData: FormData) {
-  await requireAuth();
+  const user = await requireAuth();
   const validated = PropertySchema.parse({
     name: formData.get("name"),
     address: formData.get("address"),
@@ -62,7 +61,7 @@ export async function updateProperty(id: string, formData: FormData) {
   });
 
   await prisma.property.update({
-    where: { id },
+    where: { id, userId: user.id },
     data: {
       ...validated,
       notes: validated.notes || null,
@@ -76,8 +75,8 @@ export async function updateProperty(id: string, formData: FormData) {
 }
 
 export async function archiveProperty(id: string) {
-  await requireAuth();
-  await prisma.property.update({ where: { id }, data: { status: "ARCHIVED" } });
+  const user = await requireAuth();
+  await prisma.property.update({ where: { id, userId: user.id }, data: { status: "ARCHIVED" } });
   revalidatePath("/properties");
   redirect("/properties");
 }

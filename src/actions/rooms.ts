@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { requireUser } from "@/lib/currentUser";
 import prisma from "@/lib/prisma";
 import { RoomSchema } from "@/lib/validations";
 import { z } from "zod";
@@ -12,9 +12,7 @@ export type RoomActionState = {
 };
 
 async function requireAuth() {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
-  return session.user;
+  return requireUser();
 }
 
 function getRoomValidationMessage(error: unknown) {
@@ -40,9 +38,15 @@ function parseRoomFormData(formData: FormData) {
 export async function createRoom(propertyId: string, formData: FormData): Promise<never> {
   const user = await requireAuth();
   const validated = parseRoomFormData(formData);
+  const property = await prisma.property.findFirst({
+    where: { id: propertyId, userId: user.id },
+    select: { id: true },
+  });
+  if (!property) throw new Error("Property not found.");
 
   const room = await prisma.room.create({
     data: {
+      userId: user.id,
       ...validated,
       propertyId,
       floor: validated.floor || null,
@@ -82,11 +86,11 @@ export async function createRoomFromState(
 }
 
 export async function updateRoom(id: string, propertyId: string, formData: FormData): Promise<never> {
-  await requireAuth();
+  const user = await requireAuth();
   const validated = parseRoomFormData(formData);
 
   await prisma.room.update({
-    where: { id },
+    where: { id, userId: user.id },
     data: {
       name: validated.name,
       floor: validated.floor || null,
@@ -120,10 +124,10 @@ export async function updateRoomFromState(
 }
 
 export async function deleteRoom(id: string, propertyId: string) {
-  await requireAuth();
+  const user = await requireAuth();
 
   const activeOccupancy = await prisma.occupancy.findFirst({
-    where: { roomId: id, status: "ACTIVE" },
+    where: { roomId: id, status: "ACTIVE", userId: user.id },
     select: { id: true },
   });
 
@@ -131,7 +135,7 @@ export async function deleteRoom(id: string, propertyId: string) {
     throw new Error("Cannot delete a room with an active tenancy.");
   }
 
-  await prisma.room.delete({ where: { id } });
+  await prisma.room.delete({ where: { id, userId: user.id } });
 
   revalidatePath("/properties");
   revalidatePath(`/properties/${propertyId}`);

@@ -26,7 +26,7 @@ datasource db {
 //   PaymentMethod:        BANK_TRANSFER | CASH | STANDING_ORDER | OTHER
 //   DepositStatus:        PENDING | PARTIAL | RECEIVED | REFUNDED | PARTIAL_REFUND | DEDUCTED
 //   DepositTxType:        RECEIVED | DEDUCTION | REFUND | ADJUSTMENT
-//   UserRole:             ADMIN | VIEWER
+//   UserRole:             USER | ADMIN | VIEWER
 //   ExpenseCategory:      ELECTRICITY | GAS | WATER | HEATING | INTERNET | INSURANCE |
 //                         MAINTENANCE | REPAIRS | CLEANING | TAXES | OTHER
 //   RecurrenceType:       MONTHLY | QUARTERLY | ANNUAL | ONE_OFF
@@ -37,15 +37,35 @@ model User {
   email        String   @unique
   password     String   // bcrypt hash — never exposed to client
   name         String
-  role         String   @default("ADMIN")
+  phone        String?
+  role         String   @default("USER")
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret  String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  properties   Property[]
+  tenants      Tenant[]
+  tenantDocuments TenantDocument[]
+  rooms        Room[]
+  occupancies  Occupancy[]
+  payments     Payment[]
+  deposits     Deposit[]
+  depositTransactions DepositTransaction[]
+  expenses     PropertyExpense[]
+  notes        Note[]
+  mortgages    Mortgage[]
+  mortgagePrepayments MortgagePrepayment[]
+  inventoryItems RoomInventoryItem[]
+  inventoryInspections InventoryInspection[]
+  inventoryInspectionItems InventoryInspectionItem[]
+  inventoryInspectionPhotos InventoryInspectionPhoto[]
   activityLogs ActivityLog[]
 }
 
 model Property {
   id           String   @id @default(cuid())
+  userId       String?
   name         String
   address      String
   city         String
@@ -62,6 +82,9 @@ model Property {
   mortgages     Mortgage[]
   propertyNotes Note[]           @relation("PropertyNotes")
   activityLogs  ActivityLog[]    @relation("PropertyActivity")
+  user          User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // Owner-side property expense tracking (utilities, insurance, maintenance, etc.)
@@ -75,6 +98,7 @@ model Property {
 // Clients access receipts via /api/expenses/[id]/receipt which enforces auth.
 model PropertyExpense {
   id                  String    @id @default(cuid())
+  userId              String?
   propertyId          String
   title               String    // "Electricity for February", "Q1 Insurance", etc.
   category            String    // ELECTRICITY | GAS | WATER | HEATING | INTERNET |
@@ -96,10 +120,14 @@ model PropertyExpense {
   updatedAt           DateTime  @updatedAt
 
   property            Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user                User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Room {
   id              String   @id @default(cuid())
+  userId          String?
   propertyId      String
   name            String   // "Blue Room", "Room 1", "Garden Room"
   floor           String?
@@ -114,19 +142,23 @@ model Room {
   updatedAt       DateTime @updatedAt
 
   property        Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user            User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
   occupancies     Occupancy[]
   inventoryItems  RoomInventoryItem[]
   roomNotes       Note[]             @relation("RoomNotes")
   activityLogs    ActivityLog[]      @relation("RoomActivity")
+
+  @@index([userId])
 }
 
 // Occupancy = one lease period: Tenant ↔ Room for a date range
 // All Payments and the Deposit belong to an Occupancy, not directly to a Tenant
 model Tenant {
   id               String    @id @default(cuid())
+  userId           String?
   firstName        String
   lastName         String
-  email            String    @unique
+  email            String
   phone            String?
   nationality      String?
   dateOfBirth      DateTime?
@@ -142,6 +174,10 @@ model Tenant {
   tenantNotes      Note[]           @relation("TenantNotes")
   activityLogs     ActivityLog[]    @relation("TenantActivity")
   documents        TenantDocument[]
+  user             User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, email])
+  @@index([userId])
 }
 
 // Documents attached to a tenant — one record per document type
@@ -152,6 +188,7 @@ model Tenant {
 //
 model TenantDocument {
   id          String   @id @default(cuid())
+  userId      String?
   tenantId    String
   type        String   // idDocument | workContract | salarySlip
   fileName    String
@@ -162,12 +199,15 @@ model TenantDocument {
   updatedAt   DateTime @updatedAt
 
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, type])
+  @@index([userId])
 }
 
 model Occupancy {
   id              String    @id @default(cuid())
+  userId          String?
   roomId          String
   tenantId        String
   leaseStart      DateTime
@@ -193,15 +233,19 @@ model Occupancy {
 
   room            Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
   tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user            User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
   payments        Payment[]
   deposit         Deposit?
   inspections     InventoryInspection[]
   activityLogs    ActivityLog[] @relation("OccupancyActivity")
+
+  @@index([userId])
 }
 
 // One record per calendar month per occupancy
 model Payment {
   id            String    @id @default(cuid())
+  userId        String?
   occupancyId   String
   periodYear    Int       // 2026
   periodMonth   Int       // 1–12
@@ -217,14 +261,17 @@ model Payment {
   updatedAt     DateTime  @updatedAt
 
   occupancy     Occupancy @relation(fields: [occupancyId], references: [id], onDelete: Cascade)
+  user          User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
   paymentNotes  Note[]    @relation("PaymentNotes")
 
   @@unique([occupancyId, periodYear, periodMonth])
+  @@index([userId])
 }
 
 // One deposit per occupancy
 model Deposit {
   id             String    @id @default(cuid())
+  userId         String?
   occupancyId    String    @unique
   required       Float
   received       Float     @default(0)
@@ -241,11 +288,15 @@ model Deposit {
   updatedAt      DateTime  @updatedAt
 
   occupancy      Occupancy            @relation(fields: [occupancyId], references: [id], onDelete: Cascade)
+  user           User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions   DepositTransaction[]
+
+  @@index([userId])
 }
 
 model DepositTransaction {
   id          String   @id @default(cuid())
+  userId      String?
   depositId   String
   type        String   // RECEIVED | DEDUCTION | REFUND | ADJUSTMENT
   amount      Float
@@ -254,11 +305,15 @@ model DepositTransaction {
   createdAt   DateTime @default(now())
 
   deposit     Deposit  @relation(fields: [depositId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // Polymorphic notes — one model, linked to any entity via nullable FK
 model Note {
   id         String   @id @default(cuid())
+  userId     String?
   content    String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -272,6 +327,9 @@ model Note {
   room       Room?     @relation("RoomNotes", fields: [roomId], references: [id], onDelete: Cascade)
   tenant     Tenant?   @relation("TenantNotes", fields: [tenantId], references: [id], onDelete: Cascade)
   payment    Payment?  @relation("PaymentNotes", fields: [paymentId], references: [id], onDelete: Cascade)
+  user       User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // Mortgage tracking for a property.
@@ -280,8 +338,10 @@ model Note {
 // termMonths defines the end date: endDate = startDate + termMonths months.
 model Mortgage {
   id             String   @id @default(cuid())
+  userId         String?
   propertyId     String
   property       Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user           User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   label          String?  // e.g. "Main Mortgage", "Second Charge"
   lender         String?  // e.g. "Nationwide", "Halifax"
@@ -299,12 +359,16 @@ model Mortgage {
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model MortgagePrepayment {
   id         String   @id @default(cuid())
+  userId     String?
   mortgageId String
   mortgage   Mortgage @relation(fields: [mortgageId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   type       String   // one_off | recurring
   amount     Float
@@ -316,6 +380,8 @@ model MortgagePrepayment {
 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  @@index([userId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -333,6 +399,7 @@ model MortgagePrepayment {
 
 model RoomInventoryItem {
   id             String   @id @default(cuid())
+  userId         String?
   roomId         String
   name           String
   category       String   @default("FURNITURE")
@@ -344,11 +411,15 @@ model RoomInventoryItem {
   updatedAt      DateTime @updatedAt
 
   room            Room                     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user            User?                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   inspectionItems InventoryInspectionItem[]
+
+  @@index([userId])
 }
 
 model InventoryInspection {
   id          String   @id @default(cuid())
+  userId      String?
   occupancyId String
   type        String   // CHECK_IN | CHECK_OUT
   date        DateTime
@@ -357,12 +428,16 @@ model InventoryInspection {
   updatedAt   DateTime @updatedAt
 
   occupancy Occupancy                @relation(fields: [occupancyId], references: [id], onDelete: Cascade)
+  user      User?                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   items     InventoryInspectionItem[]
   photos    InventoryInspectionPhoto[]
+
+  @@index([userId])
 }
 
 model InventoryInspectionItem {
   id              String   @id @default(cuid())
+  userId          String?
   inspectionId    String
   inventoryItemId String?
   itemName        String   // snapshot of name at time of inspection
@@ -374,9 +449,11 @@ model InventoryInspectionItem {
 
   inspection    InventoryInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
   inventoryItem RoomInventoryItem?  @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  user          User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
   photos        InventoryInspectionPhoto[]
 
   @@unique([inspectionId, inventoryItemId])
+  @@index([userId])
 }
 
 // Photo captured during an inspection.
@@ -384,6 +461,7 @@ model InventoryInspectionItem {
 // - inspectionItemId set  → photo of one specific item in the inspection
 model InventoryInspectionPhoto {
   id                String   @id @default(cuid())
+  userId            String?
   inspectionId      String
   inspectionItemId  String?
   fileName          String
@@ -395,6 +473,9 @@ model InventoryInspectionPhoto {
 
   inspection      InventoryInspection      @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
   inspectionItem  InventoryInspectionItem? @relation(fields: [inspectionItemId], references: [id], onDelete: Cascade)
+  user            User?                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // Lightweight audit trail — records major system events
@@ -419,4 +500,6 @@ model ActivityLog {
   room        Room?      @relation("RoomActivity", fields: [roomId], references: [id], onDelete: SetNull)
   tenant      Tenant?    @relation("TenantActivity", fields: [tenantId], references: [id], onDelete: SetNull)
   occupancy   Occupancy? @relation("OccupancyActivity", fields: [occupancyId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
 }

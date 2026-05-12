@@ -63,7 +63,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "File is empty." }, { status: 400 });
     }
 
-    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId, userId: session.user.id },
+    });
     if (!tenant) {
       return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
     }
@@ -73,7 +75,7 @@ export async function POST(req: NextRequest) {
     });
 
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-    const blobPath = `tenant-documents/${tenantId}/${type}.${ext}`;
+    const blobPath = `users/${session.user.id}/tenant-documents/${tenantId}/${type}.${ext}`;
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
@@ -112,6 +114,7 @@ export async function POST(req: NextRequest) {
     const document = await prisma.tenantDocument.upsert({
       where: { tenantId_type: { tenantId, type } },
       create: {
+        userId: session.user.id,
         tenantId,
         type,
         fileName: file.name,

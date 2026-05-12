@@ -56,7 +56,7 @@ export async function applyDepositTransaction(params: {
   userId: string;
 }) {
   const occupancy = await prisma.occupancy.findUnique({
-    where: { id: params.occupancyId },
+    where: { id: params.occupancyId, userId: params.userId },
     include: {
       room: true,
       deposit: {
@@ -92,6 +92,7 @@ export async function applyDepositTransaction(params: {
 
   await prisma.depositTransaction.create({
     data: {
+      userId: params.userId,
       depositId: occupancy.deposit.id,
       type: params.type,
       amount: params.amount,
@@ -101,7 +102,7 @@ export async function applyDepositTransaction(params: {
   });
 
   const allTransactions = await prisma.depositTransaction.findMany({
-    where: { depositId: occupancy.deposit.id },
+    where: { depositId: occupancy.deposit.id, userId: params.userId },
   });
 
   const summary = summarizeDepositTransactions(
@@ -110,7 +111,7 @@ export async function applyDepositTransaction(params: {
   );
 
   await prisma.deposit.update({
-    where: { id: occupancy.deposit.id },
+    where: { id: occupancy.deposit.id, userId: params.userId },
     data: {
       received: summary.received,
       receivedAt:

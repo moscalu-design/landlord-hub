@@ -22,7 +22,7 @@ export async function GET(
   const { id } = await params;
 
   const room = await prisma.room.findUnique({
-    where: { id },
+    where: { id, userId: session.user.id },
     select: { name: true },
   });
 
@@ -31,7 +31,7 @@ export async function GET(
   }
 
   const payments = await prisma.payment.findMany({
-    where: { occupancy: { roomId: id } },
+    where: { userId: session.user.id, occupancy: { roomId: id } },
     include: {
       occupancy: {
         include: {

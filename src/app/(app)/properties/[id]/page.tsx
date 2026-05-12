@@ -13,6 +13,7 @@ import { getExpenseTotalForMonth } from "@/lib/expenses";
 import { getDisplayRoomStatus, summarizeRooms } from "@/lib/roomOccupancy";
 import prisma from "@/lib/prisma";
 import { computePaymentStatus, formatCurrency, formatDate, toDateInputValue } from "@/lib/utils";
+import { requireUser } from "@/lib/currentUser";
 
 export default async function PropertyDetailPage({
   params,
@@ -20,6 +21,7 @@ export default async function PropertyDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const user = await requireUser();
 
   const now = new Date();
   const thisYear = now.getFullYear();
@@ -34,7 +36,7 @@ export default async function PropertyDetailPage({
 
   const [property, chartPayments] = await Promise.all([
     prisma.property.findUnique({
-      where: { id },
+      where: { id, userId: user.id },
       include: {
         rooms: {
           include: {
@@ -69,6 +71,7 @@ export default async function PropertyDetailPage({
     }),
     prisma.payment.findMany({
       where: {
+        userId: user.id,
         occupancy: { room: { propertyId: id } },
         OR: chartMonthFilter,
       },

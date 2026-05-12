@@ -227,7 +227,7 @@ function getCurrentScheduleIndex(startDate: Date): number {
   return Math.max(0, elapsedMonths(startDate, now.getFullYear(), now.getMonth() + 1));
 }
 
-function buildSchedule(
+export function buildSchedule(
   mortgage: MortgageRecord,
   options: BuildScheduleOptions = {}
 ): ScheduleEntry[] {

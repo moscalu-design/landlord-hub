@@ -6,6 +6,7 @@ import { QuickAddCostButton } from "@/components/properties/PropertyCostsSummary
 import { PropertySubnav } from "@/components/properties/PropertySubnav";
 import prisma from "@/lib/prisma";
 import { toDateInputValue } from "@/lib/utils";
+import { requireUser } from "@/lib/currentUser";
 
 export default async function PropertyCostsPage({
   params,
@@ -13,8 +14,9 @@ export default async function PropertyCostsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const user = await requireUser();
   const property = await prisma.property.findUnique({
-    where: { id },
+    where: { id, userId: user.id },
     include: {
       expenses: {
         orderBy: [

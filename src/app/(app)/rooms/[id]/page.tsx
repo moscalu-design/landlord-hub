@@ -17,6 +17,7 @@ import { computePaymentStatus } from "@/lib/utils";
 import { getDisplayRoomStatus } from "@/lib/roomOccupancy";
 import prisma from "@/lib/prisma";
 import { formatCurrency, formatDate, toDateInputValue } from "@/lib/utils";
+import { requireUser } from "@/lib/currentUser";
 
 export default async function RoomDetailPage({
   params,
@@ -24,9 +25,10 @@ export default async function RoomDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const user = await requireUser();
 
   const room = await prisma.room.findUnique({
-    where: { id },
+    where: { id, userId: user.id },
     include: {
       property: true,
       occupancies: {
@@ -71,6 +73,7 @@ export default async function RoomDetailPage({
   // Tenants available to assign (no active occupancy)
   const availableTenants = await prisma.tenant.findMany({
     where: {
+      userId: user.id,
       status: "ACTIVE",
       occupancies: { none: { status: "ACTIVE" } },
     },

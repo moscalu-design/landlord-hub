@@ -27,7 +27,7 @@ export async function GET(
   const { id } = (await context.params) as { id: string };
 
   const inspection = await prisma.inventoryInspection.findUnique({
-    where: { id },
+    where: { id, userId: session.user.id },
     include: {
       occupancy: {
         include: {

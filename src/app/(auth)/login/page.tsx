@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { auth, signIn } from "@/lib/auth";
 
 export default async function LoginPage() {
@@ -28,6 +29,7 @@ export default async function LoginPage() {
               await signIn("credentials", {
                 email: formData.get("email"),
                 password: formData.get("password"),
+                totpCode: formData.get("totpCode") || undefined,
                 redirectTo: "/dashboard",
               });
             }}
@@ -65,6 +67,22 @@ export default async function LoginPage() {
               />
             </div>
 
+            <div>
+              <label htmlFor="totpCode" className="block text-sm font-medium text-slate-700 mb-1.5">
+                Two-factor code
+              </label>
+              <input
+                id="totpCode"
+                name="totpCode"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900
+                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder="Only if enabled"
+              />
+            </div>
+
             <button
               type="submit"
               className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2.5 rounded-lg text-sm
@@ -73,6 +91,16 @@ export default async function LoginPage() {
               Sign in
             </button>
           </form>
+
+          <div className="mt-6 border-t border-slate-100 pt-5 text-center">
+            <p className="text-sm text-slate-600">New to rentalapp?</p>
+            <Link
+              href="/signup"
+              className="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Create an account
+            </Link>
+          </div>
         </div>
 
         <p className="text-center text-xs text-slate-500 mt-6">

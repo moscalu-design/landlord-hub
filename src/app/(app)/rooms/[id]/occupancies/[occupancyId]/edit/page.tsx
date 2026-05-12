@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { OccupancyForm } from "@/components/rooms/OccupancyForm";
 import prisma from "@/lib/prisma";
+import { requireUser } from "@/lib/currentUser";
 
 export default async function EditOccupancyPage({
   params,
@@ -10,9 +11,10 @@ export default async function EditOccupancyPage({
   params: Promise<{ id: string; occupancyId: string }>;
 }) {
   const { id, occupancyId } = await params;
+  const user = await requireUser();
 
   const occupancy = await prisma.occupancy.findUnique({
-    where: { id: occupancyId },
+    where: { id: occupancyId, userId: user.id },
     include: {
       room: {
         include: {

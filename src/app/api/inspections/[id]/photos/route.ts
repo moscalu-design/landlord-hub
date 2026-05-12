@@ -24,7 +24,7 @@ export async function POST(
 
   const { id } = (await context.params) as { id: string };
   const inspection = await prisma.inventoryInspection.findUnique({
-    where: { id },
+    where: { id, userId: session.user.id },
     include: { items: { select: { id: true } } },
   });
 
@@ -77,7 +77,7 @@ export async function POST(
 
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
   const photoId = crypto.randomUUID();
-  const storagePath = `inspection-photos/${id}/${photoId}.${ext}`;
+  const storagePath = `users/${session.user.id}/inspection-photos/${id}/${photoId}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
 
   let storedFile: Awaited<ReturnType<typeof storeDocument>>;
@@ -95,6 +95,7 @@ export async function POST(
   const photo = await prisma.inventoryInspectionPhoto.create({
     data: {
       id: photoId,
+      userId: session.user.id,
       inspectionId: id,
       inspectionItemId,
       fileName: file.name,

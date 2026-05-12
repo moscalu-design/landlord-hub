@@ -1,21 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
+import { requireUser } from "@/lib/currentUser";
 import { deleteStoredDocument } from "@/lib/documentStorage";
 import prisma from "@/lib/prisma";
 
 async function requireAuth() {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
-  return session.user;
+  return requireUser();
 }
 
 export async function deleteDocument(documentId: string): Promise<{ error?: string }> {
-  await requireAuth();
+  const user = await requireAuth();
 
   const doc = await prisma.tenantDocument.findUnique({
-    where: { id: documentId },
+    where: { id: documentId, userId: user.id },
   });
 
   if (!doc) return { error: "Document not found." };
@@ -26,7 +24,7 @@ export async function deleteDocument(documentId: string): Promise<{ error?: stri
     // File may already be gone — continue to remove DB record
   }
 
-  await prisma.tenantDocument.delete({ where: { id: documentId } });
+  await prisma.tenantDocument.delete({ where: { id: documentId, userId: user.id } });
 
   revalidatePath(`/tenants/${doc.tenantId}`);
   return {};

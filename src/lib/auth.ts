@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
+import { verifyTotpCode } from "@/lib/totp";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -9,6 +10,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        totpCode: { label: "Two-factor code", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
@@ -25,6 +27,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         );
 
         if (!passwordMatch) return null;
+
+        if (user.twoFactorEnabled) {
+          const totpCode = credentials.totpCode;
+          if (
+            typeof totpCode !== "string" ||
+            !user.twoFactorSecret ||
+            !verifyTotpCode(user.twoFactorSecret, totpCode)
+          ) {
+            return null;
+          }
+        }
 
         return {
           id: user.id,

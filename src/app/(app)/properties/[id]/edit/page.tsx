@@ -3,6 +3,7 @@ import Link from "next/link";
 import { TopBar } from "@/components/layout/TopBar";
 import { PropertyForm } from "@/components/properties/PropertyForm";
 import prisma from "@/lib/prisma";
+import { requireUser } from "@/lib/currentUser";
 
 export default async function EditPropertyPage({
   params,
@@ -10,7 +11,8 @@ export default async function EditPropertyPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const property = await prisma.property.findUnique({ where: { id } });
+  const user = await requireUser();
+  const property = await prisma.property.findUnique({ where: { id, userId: user.id } });
   if (!property) notFound();
 
   return (

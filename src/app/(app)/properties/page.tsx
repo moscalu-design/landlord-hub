@@ -4,11 +4,13 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { summarizeRooms } from "@/lib/roomOccupancy";
 import prisma from "@/lib/prisma";
 import { formatCurrency } from "@/lib/utils";
+import { requireUser } from "@/lib/currentUser";
 import { PROPERTY_TYPE_LABELS, type PropertyType } from "@/types";
 
 async function getProperties() {
+  const user = await requireUser();
   return prisma.property.findMany({
-    where: { status: { not: "ARCHIVED" } },
+    where: { userId: user.id, status: { not: "ARCHIVED" } },
     include: {
       rooms: {
         include: {

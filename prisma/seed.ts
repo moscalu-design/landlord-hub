@@ -3,7 +3,7 @@
  * Run: npx prisma db seed
  *
  * Creates:
- *  - 1 admin user (admin@landlord.com / password: admin123)
+ *  - 1 demo user (admin@landlord.com / password: admin123)
  *  - 1 property (3-bedroom house)
  *  - 3 rooms (Blue Room, Garden Room, Attic Room)
  *  - 3 tenants
@@ -35,26 +35,48 @@ function getDueDate(year: number, month: number, dueDay: number): Date {
 async function main() {
   console.log("🌱 Seeding database…");
 
-  // ─── Admin user ────────────────────────────────────────────────────────────
+  // ─── Demo user ─────────────────────────────────────────────────────────────
   const hashedPassword = await bcrypt.hash("admin123", 12);
 
   const user = await prisma.user.upsert({
     where: { email: "admin@landlord.com" },
-    update: {},
+    update: {
+      name: "Demo User",
+      phone: "+44 7700 900123",
+      role: "USER",
+    },
     create: {
       email: "admin@landlord.com",
       password: hashedPassword,
-      name: "Admin",
-      role: "ADMIN",
+      name: "Demo User",
+      phone: "+44 7700 900123",
+      role: "USER",
     },
   });
 
   console.log("✓ User created:", user.email);
 
+  // Make this seed idempotent: re-running cleans this user's demo data first
+  // so unique constraints (e.g. Tenant userId+email) don't blow up.
+  await prisma.activityLog.deleteMany({ where: { userId: user.id } });
+  await prisma.payment.deleteMany({ where: { userId: user.id } });
+  await prisma.depositTransaction.deleteMany({ where: { userId: user.id } });
+  await prisma.deposit.deleteMany({ where: { userId: user.id } });
+  await prisma.occupancy.deleteMany({ where: { userId: user.id } });
+  await prisma.tenantDocument.deleteMany({ where: { userId: user.id } });
+  await prisma.tenant.deleteMany({ where: { userId: user.id } });
+  await prisma.roomInventoryItem.deleteMany({ where: { userId: user.id } });
+  await prisma.room.deleteMany({ where: { userId: user.id } });
+  await prisma.mortgagePrepayment.deleteMany({ where: { userId: user.id } });
+  await prisma.mortgage.deleteMany({ where: { userId: user.id } });
+  await prisma.propertyExpense.deleteMany({ where: { userId: user.id } });
+  await prisma.property.deleteMany({ where: { userId: user.id } });
+
   // ─── Property ──────────────────────────────────────────────────────────────
   const property = await prisma.property.create({
     data: {
       name: "Oak Street House",
+      userId: user.id,
       address: "14 Oak Street",
       city: "London",
       postcode: "E1 6RF",
@@ -84,6 +106,7 @@ async function main() {
     prisma.room.create({
       data: {
         propertyId: property.id,
+        userId: user.id,
         name: "Blue Room",
         floor: "Ground",
         sizeM2: 16.5,
@@ -98,6 +121,7 @@ async function main() {
     prisma.room.create({
       data: {
         propertyId: property.id,
+        userId: user.id,
         name: "Garden Room",
         floor: "Ground",
         sizeM2: 14.2,
@@ -112,6 +136,7 @@ async function main() {
     prisma.room.create({
       data: {
         propertyId: property.id,
+        userId: user.id,
         name: "Attic Room",
         floor: "Second",
         sizeM2: 12.0,
@@ -132,6 +157,7 @@ async function main() {
     prisma.tenant.create({
       data: {
         firstName: "James",
+        userId: user.id,
         lastName: "Morrison",
         email: "james.morrison@email.com",
         phone: "+44 7700 123456",
@@ -147,6 +173,7 @@ async function main() {
     prisma.tenant.create({
       data: {
         firstName: "Priya",
+        userId: user.id,
         lastName: "Sharma",
         email: "priya.sharma@email.com",
         phone: "+44 7711 234567",
@@ -162,6 +189,7 @@ async function main() {
     prisma.tenant.create({
       data: {
         firstName: "Lucas",
+        userId: user.id,
         lastName: "Fernandez",
         email: "lucas.fernandez@email.com",
         phone: "+44 7722 345678",
@@ -191,6 +219,7 @@ async function main() {
       prisma.occupancy.create({
         data: {
           roomId: room.id,
+          userId: user.id,
           tenantId: tenants[i].id,
           leaseStart: leaseStarts[i],
           monthlyRent: room.monthlyRent,
@@ -211,12 +240,14 @@ async function main() {
       prisma.deposit.create({
         data: {
           occupancyId: occ.id,
+          userId: user.id,
           required: rooms[i].depositAmount,
           received: rooms[i].depositAmount,
           receivedAt: leaseStarts[i],
           status: "RECEIVED",
           transactions: {
             create: {
+              userId: user.id,
               type: "RECEIVED",
               amount: rooms[i].depositAmount,
               date: leaseStarts[i],
@@ -307,6 +338,7 @@ async function main() {
 
       payments.push({
         occupancyId: occ.id,
+        userId: user.id,
         periodYear: year,
         periodMonth: month,
         amountDue: occ.monthlyRent,

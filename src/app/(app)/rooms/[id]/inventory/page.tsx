@@ -4,6 +4,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { RoomInventoryManager } from "@/components/inventory/RoomInventoryManager";
 import { InventoryInspectionView } from "@/components/inventory/InventoryInspectionView";
 import prisma from "@/lib/prisma";
+import { requireUser } from "@/lib/currentUser";
 
 export default async function RoomInventoryPage({
   params,
@@ -11,9 +12,10 @@ export default async function RoomInventoryPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const user = await requireUser();
 
   const room = await prisma.room.findUnique({
-    where: { id },
+    where: { id, userId: user.id },
     include: {
       property: true,
       inventoryItems: {

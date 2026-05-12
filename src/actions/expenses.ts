@@ -1,15 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
+import { requireUser } from "@/lib/currentUser";
 import { deleteStoredDocument } from "@/lib/documentStorage";
 import prisma from "@/lib/prisma";
 import { PropertyExpenseSchema } from "@/lib/validations";
 
 async function requireAuth() {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
-  return session.user;
+  return requireUser();
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -52,11 +50,17 @@ export async function createExpense(
   propertyId: string,
   formData: FormData
 ): Promise<{ id: string }> {
-  await requireAuth();
+  const user = await requireAuth();
   const validated = parseExpenseFormData(formData);
+  const property = await prisma.property.findFirst({
+    where: { id: propertyId, userId: user.id },
+    select: { id: true },
+  });
+  if (!property) throw new Error("Property not found.");
 
   const expense = await prisma.propertyExpense.create({
     data: {
+      userId: user.id,
       propertyId,
       title: validated.title ?? "Expense",
       category: validated.category,
@@ -82,11 +86,11 @@ export async function updateExpense(
   propertyId: string,
   formData: FormData
 ): Promise<void> {
-  await requireAuth();
+  const user = await requireAuth();
   const validated = parseExpenseFormData(formData);
 
   await prisma.propertyExpense.update({
-    where: { id },
+    where: { id, userId: user.id },
     data: {
       title: validated.title ?? "Expense",
       category: validated.category,
@@ -107,9 +111,9 @@ export async function updateExpense(
 }
 
 export async function deleteExpense(id: string, propertyId: string): Promise<void> {
-  await requireAuth();
+  const user = await requireAuth();
 
-  const expense = await prisma.propertyExpense.findUnique({ where: { id } });
+  const expense = await prisma.propertyExpense.findFirst({ where: { id, userId: user.id } });
   if (!expense) return;
 
   // Delete receipt from storage if present
@@ -121,7 +125,7 @@ export async function deleteExpense(id: string, propertyId: string): Promise<voi
     }
   }
 
-  await prisma.propertyExpense.delete({ where: { id } });
+  await prisma.propertyExpense.delete({ where: { id, userId: user.id } });
   revalidatePath(`/properties/${propertyId}`);
   revalidatePath(`/properties/${propertyId}/costs`);
 }

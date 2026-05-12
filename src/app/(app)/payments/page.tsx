@@ -3,10 +3,11 @@ import { TopBar } from "@/components/layout/TopBar";
 import { PaymentStatusBadge } from "@/components/shared/StatusBadge";
 import prisma from "@/lib/prisma";
 import { computePaymentStatus, formatCurrency, formatDate, formatMonthYear } from "@/lib/utils";
+import { requireUser } from "@/lib/currentUser";
 
-async function getPaymentsData(year: number, month: number) {
+async function getPaymentsData(userId: string, year: number, month: number) {
   const payments = await prisma.payment.findMany({
-    where: { periodYear: year, periodMonth: month },
+    where: { userId, periodYear: year, periodMonth: month },
     include: {
       occupancy: {
         include: {
@@ -51,12 +52,13 @@ export default async function PaymentsPage({
   searchParams: Promise<{ year?: string; month?: string; status?: string }>;
 }) {
   const sp = await searchParams;
+  const user = await requireUser();
   const now = new Date();
   const year = Number(sp.year) || now.getFullYear();
   const month = Number(sp.month) || (now.getMonth() + 1);
   const statusFilter = sp.status ?? "";
 
-  const { payments, totalDue, totalPaid, totalOutstanding } = await getPaymentsData(year, month);
+  const { payments, totalDue, totalPaid, totalOutstanding } = await getPaymentsData(user.id, year, month);
 
   const filtered = statusFilter
     ? payments.filter((p) => p.derivedStatus === statusFilter)

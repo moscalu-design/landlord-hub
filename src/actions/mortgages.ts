@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
+import { requireUser } from "@/lib/currentUser";
 import {
   calculateMortgageMonthlyPayment,
   normalizeMortgageType,
@@ -11,9 +11,7 @@ import prisma from "@/lib/prisma";
 import { MortgagePrepaymentSchema, MortgageSchema } from "@/lib/validations";
 
 async function requireAuth() {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
-  return session.user;
+  return requireUser();
 }
 
 function getValidationMessage(error: unknown) {
@@ -78,13 +76,19 @@ export async function createMortgage(
   propertyId: string,
   formData: FormData
 ): Promise<{ id: string }> {
-  await requireAuth();
+  const user = await requireAuth();
 
   try {
+    const property = await prisma.property.findFirst({
+      where: { id: propertyId, userId: user.id },
+      select: { id: true },
+    });
+    if (!property) throw new Error("Property not found.");
     const validated = parseMortgageForm(formData);
 
     const mortgage = await prisma.mortgage.create({
       data: {
+        userId: user.id,
         propertyId,
         label: validated.label,
         lender: validated.lender || null,
@@ -110,13 +114,13 @@ export async function updateMortgage(
   propertyId: string,
   formData: FormData
 ): Promise<void> {
-  await requireAuth();
+  const user = await requireAuth();
 
   try {
     const validated = parseMortgageForm(formData);
 
     await prisma.mortgage.update({
-      where: { id },
+      where: { id, userId: user.id },
       data: {
         label: validated.label,
         lender: validated.lender || null,
@@ -137,8 +141,8 @@ export async function updateMortgage(
 }
 
 export async function deleteMortgage(id: string, propertyId: string): Promise<void> {
-  await requireAuth();
-  await prisma.mortgage.delete({ where: { id } });
+  const user = await requireAuth();
+  await prisma.mortgage.delete({ where: { id, userId: user.id } });
   revalidatePath(`/properties/${propertyId}`);
 }
 
@@ -147,8 +151,8 @@ export async function toggleMortgageActive(
   propertyId: string,
   isActive: boolean
 ): Promise<void> {
-  await requireAuth();
-  await prisma.mortgage.update({ where: { id }, data: { isActive } });
+  const user = await requireAuth();
+  await prisma.mortgage.update({ where: { id, userId: user.id }, data: { isActive } });
   revalidatePath(`/properties/${propertyId}`);
 }
 
@@ -157,12 +161,18 @@ export async function createMortgagePrepayment(
   propertyId: string,
   formData: FormData
 ): Promise<{ id: string }> {
-  await requireAuth();
+  const user = await requireAuth();
 
   try {
     const validated = parseMortgagePrepaymentForm(formData);
+    const mortgage = await prisma.mortgage.findFirst({
+      where: { id: mortgageId, userId: user.id },
+      select: { id: true },
+    });
+    if (!mortgage) throw new Error("Mortgage not found.");
     const prepayment = await prisma.mortgagePrepayment.create({
       data: {
+        userId: user.id,
         mortgageId,
         type: validated.type,
         amount: validated.amount,
@@ -185,12 +195,12 @@ export async function updateMortgagePrepayment(
   propertyId: string,
   formData: FormData
 ): Promise<void> {
-  await requireAuth();
+  const user = await requireAuth();
 
   try {
     const validated = parseMortgagePrepaymentForm(formData);
     await prisma.mortgagePrepayment.update({
-      where: { id },
+      where: { id, userId: user.id },
       data: {
         type: validated.type,
         amount: validated.amount,
@@ -211,8 +221,8 @@ export async function deleteMortgagePrepayment(
   id: string,
   propertyId: string
 ): Promise<void> {
-  await requireAuth();
-  await prisma.mortgagePrepayment.delete({ where: { id } });
+  const user = await requireAuth();
+  await prisma.mortgagePrepayment.delete({ where: { id, userId: user.id } });
   revalidatePath(`/properties/${propertyId}`);
 }
 
@@ -221,7 +231,7 @@ export async function toggleMortgagePrepaymentActive(
   propertyId: string,
   isActive: boolean
 ): Promise<void> {
-  await requireAuth();
-  await prisma.mortgagePrepayment.update({ where: { id }, data: { isActive } });
+  const user = await requireAuth();
+  await prisma.mortgagePrepayment.update({ where: { id, userId: user.id }, data: { isActive } });
   revalidatePath(`/properties/${propertyId}`);
 }

@@ -10,6 +10,7 @@ import {
 } from "@/lib/mortgage";
 import prisma from "@/lib/prisma";
 import { formatCurrency } from "@/lib/utils";
+import { requireUser } from "@/lib/currentUser";
 
 function formatMonthYear(date: Date | null): string {
   if (!date) return "—";
@@ -22,8 +23,9 @@ export default async function PropertyMortgagesPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const user = await requireUser();
   const property = await prisma.property.findUnique({
-    where: { id },
+    where: { id, userId: user.id },
     include: {
       mortgages: {
         include: {

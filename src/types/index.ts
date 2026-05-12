@@ -18,7 +18,7 @@ export type DepositStatus =
   | "PARTIAL_REFUND"
   | "DEDUCTED";
 export type DepositTransactionType = "RECEIVED" | "DEDUCTION" | "REFUND" | "ADJUSTMENT";
-export type UserRole = "ADMIN" | "VIEWER";
+export type UserRole = "USER" | "ADMIN" | "VIEWER";
 
 // ─── Label maps for display ────────────────────────────────────────────────────
 
@@ -97,4 +97,3 @@ export const DEPOSIT_STATUS_COLORS: Record<DepositStatus, string> = {
   PARTIAL_REFUND: "bg-amber-100 text-amber-800",
   DEDUCTED: "bg-red-100 text-red-800",
 };
-

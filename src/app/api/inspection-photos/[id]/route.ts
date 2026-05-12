@@ -14,7 +14,7 @@ export async function GET(
 
   const { id } = (await context.params) as { id: string };
   const photo = await prisma.inventoryInspectionPhoto.findUnique({
-    where: { id },
+    where: { id, userId: session.user.id },
   });
 
   if (!photo) {
@@ -54,7 +54,7 @@ export async function DELETE(
 
   const { id } = (await context.params) as { id: string };
   const photo = await prisma.inventoryInspectionPhoto.findUnique({
-    where: { id },
+    where: { id, userId: session.user.id },
     include: {
       inspection: {
         include: {
@@ -76,7 +76,7 @@ export async function DELETE(
     // Best-effort
   }
 
-  await prisma.inventoryInspectionPhoto.delete({ where: { id } });
+  await prisma.inventoryInspectionPhoto.delete({ where: { id, userId: session.user.id } });
 
   return NextResponse.json({
     ok: true,

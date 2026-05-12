@@ -14,7 +14,9 @@ export async function GET(
 
   const { id } = await params;
 
-  const doc = await prisma.tenantDocument.findUnique({ where: { id } });
+  const doc = await prisma.tenantDocument.findUnique({
+    where: { id, userId: session.user.id },
+  });
   if (!doc) {
     return NextResponse.json({ error: "Document not found." }, { status: 404 });
   }

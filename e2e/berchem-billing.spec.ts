@@ -25,7 +25,10 @@ test("Berchem House shows generated May rent charges as overdue with Payments be
   expect(subnavText.indexOf("Payments")).toBeGreaterThanOrEqual(0);
   expect(subnavText.indexOf("Costs")).toBeGreaterThan(subnavText.indexOf("Payments"));
 
-  await page.getByRole("link", { name: "Payments" }).click();
+  await page
+    .getByRole("navigation", { name: "Property sections" })
+    .getByRole("link", { name: "Payments" })
+    .click();
   await expect(page).toHaveURL(/\/properties\/[^/]+\/payments$/);
   await expect(page.getByRole("heading", { name: /Berchem House Payments/ })).toBeVisible();
 

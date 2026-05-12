@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { RoomStatusBadge, DepositStatusBadge } from "@/components/shared/StatusBadge";
 import { RecordPaymentForm } from "@/components/payments/RecordPaymentForm";
@@ -48,6 +48,9 @@ export default async function RoomDetailPage({
   });
 
   if (!room) notFound();
+  if (room.isDefaultWholePropertyRoom) {
+    redirect(`/properties/${room.propertyId}`);
+  }
 
   const activeOccupancy = room.occupancies.find((o) => o.status === "ACTIVE");
   const pastOccupancies = room.occupancies.filter((o) => o.status !== "ACTIVE");

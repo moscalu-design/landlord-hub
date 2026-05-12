@@ -161,10 +161,17 @@ export default async function PaymentsPage({
                         {payment.occupancy.tenant.firstName} {payment.occupancy.tenant.lastName}
                       </Link>
                       <Link
-                        href={`/rooms/${payment.occupancy.roomId}`}
+                        href={
+                          payment.occupancy.room.isDefaultWholePropertyRoom
+                            ? `/properties/${payment.occupancy.room.propertyId}`
+                            : `/rooms/${payment.occupancy.roomId}`
+                        }
                         className="mt-1 block text-xs text-slate-500 hover:text-blue-600"
                       >
-                        {payment.occupancy.room.property.name} · {payment.occupancy.room.name}
+                        {payment.occupancy.room.property.name}
+                        {payment.occupancy.room.isDefaultWholePropertyRoom
+                          ? " · Whole property"
+                          : ` · ${payment.occupancy.room.name}`}
                       </Link>
                     </div>
                     <PaymentStatusBadge status={payment.derivedStatus} size="sm" />
@@ -190,7 +197,11 @@ export default async function PaymentsPage({
                     </div>
                   </dl>
                   <Link
-                    href={`/rooms/${payment.occupancy.roomId}`}
+                    href={
+                      payment.occupancy.room.isDefaultWholePropertyRoom
+                        ? `/properties/${payment.occupancy.room.propertyId}`
+                        : `/rooms/${payment.occupancy.roomId}`
+                    }
                     className="inline-flex items-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-blue-600 hover:bg-slate-50"
                   >
                     Record payment
@@ -229,8 +240,18 @@ export default async function PaymentsPage({
                       </Link>
                     </td>
                     <td className="px-5 py-3 text-slate-600">
-                      <Link href={`/rooms/${payment.occupancy.roomId}`} className="hover:text-blue-600">
-                        {payment.occupancy.room.property.name} · {payment.occupancy.room.name}
+                      <Link
+                        href={
+                          payment.occupancy.room.isDefaultWholePropertyRoom
+                            ? `/properties/${payment.occupancy.room.propertyId}`
+                            : `/rooms/${payment.occupancy.roomId}`
+                        }
+                        className="hover:text-blue-600"
+                      >
+                        {payment.occupancy.room.property.name}
+                        {payment.occupancy.room.isDefaultWholePropertyRoom
+                          ? " · Whole property"
+                          : ` · ${payment.occupancy.room.name}`}
                       </Link>
                     </td>
                     <td className="px-5 py-3 text-slate-700">{formatCurrency(payment.amountDue)}</td>
@@ -243,7 +264,14 @@ export default async function PaymentsPage({
                       <PaymentStatusBadge status={payment.derivedStatus} size="sm" />
                     </td>
                     <td className="px-5 py-3">
-                      <Link href={`/rooms/${payment.occupancy.roomId}`} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                      <Link
+                        href={
+                          payment.occupancy.room.isDefaultWholePropertyRoom
+                            ? `/properties/${payment.occupancy.room.propertyId}`
+                            : `/rooms/${payment.occupancy.roomId}`
+                        }
+                        className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                      >
                         Record →
                       </Link>
                     </td>

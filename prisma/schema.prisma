@@ -77,6 +77,26 @@ model Property {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // Rental mode: ROOM_LEVEL (per-room tenancies) or FULL_PROPERTY (single
+  // whole-property tenancy). Existing properties default to ROOM_LEVEL.
+  // For FULL_PROPERTY, monthlyRent holds the whole-property listed rent and
+  // a single hidden Room (isDefaultWholePropertyRoom=true) keeps the existing
+  // Room→Occupancy→Payment path intact.
+  rentalMode      String  @default("ROOM_LEVEL")
+  monthlyRent     Float?
+
+  // Static property information (independent of rentable rooms).
+  totalRoomCount Int?
+  bedroomCount    Int?
+  bathroomCount   Int?
+  surfaceAreaSqm  Float?
+  hasTerrace      Boolean @default(false)
+  hasBalcony      Boolean @default(false)
+  hasGarden       Boolean @default(false)
+  hasParking      Boolean @default(false)
+  isFurnished     Boolean @default(false)
+  description     String?
+
   rooms         Room[]
   expenses      PropertyExpense[]
   mortgages     Mortgage[]
@@ -138,6 +158,10 @@ model Room {
   depositAmount   Float
   status          String   @default("VACANT")
   notes           String?
+  // Hidden internal Room used as the rentable unit for FULL_PROPERTY properties.
+  // Kept invisible in normal UI; uniqueness is enforced at the application layer
+  // (one default room per FULL_PROPERTY property).
+  isDefaultWholePropertyRoom Boolean @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

@@ -42,6 +42,30 @@ describe("PropertySchema", () => {
   it("rejects invalid propertyType", () => {
     expect(() => PropertySchema.parse({ ...valid, propertyType: "CASTLE" })).toThrow();
   });
+
+  it("defaults rentalMode to ROOM_LEVEL", () => {
+    const result = PropertySchema.parse(valid);
+    expect(result.rentalMode).toBe("ROOM_LEVEL");
+  });
+
+  it("requires monthlyRent for full-property rentals", () => {
+    expect(() =>
+      PropertySchema.parse({ ...valid, rentalMode: "FULL_PROPERTY" })
+    ).toThrow("Monthly rent is required for whole-property rentals");
+  });
+
+  it("accepts static property room counts without creating rentable rooms", () => {
+    const result = PropertySchema.parse({
+      ...valid,
+      totalRoomCount: "5",
+      bedroomCount: "3",
+      bathroomCount: "2",
+    });
+
+    expect(result.totalRoomCount).toBe(5);
+    expect(result.bedroomCount).toBe(3);
+    expect(result.bathroomCount).toBe(2);
+  });
 });
 
 // ─── RoomSchema ───────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { TopBar } from "@/components/layout/TopBar";
 import { RoomForm } from "@/components/rooms/RoomForm";
@@ -17,6 +17,9 @@ export default async function EditRoomPage({
     include: { property: true },
   });
   if (!room) notFound();
+  if (room.isDefaultWholePropertyRoom) {
+    redirect(`/properties/${room.propertyId}/edit`);
+  }
 
   return (
     <div className="flex flex-col flex-1">

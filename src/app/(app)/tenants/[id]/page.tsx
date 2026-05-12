@@ -158,12 +158,19 @@ export default async function TenantDetailPage({
                       {activeOccupancy.room.property.name}
                     </Link>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Room</span>
-                    <Link href={`/rooms/${activeOccupancy.roomId}`} className="text-blue-600 hover:text-blue-700 font-medium">
-                      {activeOccupancy.room.name}
-                    </Link>
-                  </div>
+                  {activeOccupancy.room.isDefaultWholePropertyRoom ? (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Unit</span>
+                      <span className="text-slate-700 font-medium">Whole property</span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Room</span>
+                      <Link href={`/rooms/${activeOccupancy.roomId}`} className="text-blue-600 hover:text-blue-700 font-medium">
+                        {activeOccupancy.room.name}
+                      </Link>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-slate-500">Lease Start</span>
                     <span className="text-slate-700">{formatDate(activeOccupancy.leaseStart)}</span>
@@ -273,8 +280,18 @@ export default async function TenantDetailPage({
               {pastOccupancies.map((occ) => (
                 <div key={occ.id} className="flex justify-between text-sm py-2 border-b border-slate-100 last:border-0">
                   <div>
-                    <Link href={`/rooms/${occ.roomId}`} className="font-medium text-slate-700 hover:text-blue-600">
-                      {occ.room.property.name} · {occ.room.name}
+                    <Link
+                      href={
+                        occ.room.isDefaultWholePropertyRoom
+                          ? `/properties/${occ.room.propertyId}`
+                          : `/rooms/${occ.roomId}`
+                      }
+                      className="font-medium text-slate-700 hover:text-blue-600"
+                    >
+                      {occ.room.property.name}
+                      {occ.room.isDefaultWholePropertyRoom
+                        ? " · Whole property"
+                        : ` · ${occ.room.name}`}
                     </Link>
                   </div>
                   <div className="text-slate-500">

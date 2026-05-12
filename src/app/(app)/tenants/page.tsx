@@ -80,7 +80,10 @@ export default async function TenantsPage() {
                       </div>
                       {activeOccupancy ? (
                         <p className="text-xs text-slate-500 mt-0.5 truncate">
-                          {activeOccupancy.room.property.name} · {activeOccupancy.room.name}
+                          {activeOccupancy.room.property.name}
+                          {activeOccupancy.room.isDefaultWholePropertyRoom
+                            ? " · Whole property"
+                            : ` · ${activeOccupancy.room.name}`}
                         </p>
                       ) : (
                         <p className="text-xs text-slate-400 mt-0.5">Unassigned</p>
@@ -125,8 +128,18 @@ export default async function TenantsPage() {
                           </td>
                           <td className="px-5 py-3 text-slate-600">
                             {activeOccupancy ? (
-                              <Link href={`/rooms/${activeOccupancy.room.id}`} className="hover:text-blue-600">
-                                {activeOccupancy.room.property.name} · {activeOccupancy.room.name}
+                              <Link
+                                href={
+                                  activeOccupancy.room.isDefaultWholePropertyRoom
+                                    ? `/properties/${activeOccupancy.room.propertyId}`
+                                    : `/rooms/${activeOccupancy.room.id}`
+                                }
+                                className="hover:text-blue-600"
+                              >
+                                {activeOccupancy.room.property.name}
+                                {activeOccupancy.room.isDefaultWholePropertyRoom
+                                  ? " · Whole property"
+                                  : ` · ${activeOccupancy.room.name}`}
                               </Link>
                             ) : (
                               <span className="text-slate-400">Unassigned</span>

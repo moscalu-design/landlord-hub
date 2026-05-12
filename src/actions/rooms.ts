@@ -40,9 +40,14 @@ export async function createRoom(propertyId: string, formData: FormData): Promis
   const validated = parseRoomFormData(formData);
   const property = await prisma.property.findFirst({
     where: { id: propertyId, userId: user.id },
-    select: { id: true },
+    select: { id: true, rentalMode: true },
   });
   if (!property) throw new Error("Property not found.");
+  if (property.rentalMode === "FULL_PROPERTY") {
+    throw new Error(
+      "This property is rented as a whole. Switch it to room-level rental to add individual rooms.",
+    );
+  }
 
   const room = await prisma.room.create({
     data: {
@@ -125,6 +130,15 @@ export async function updateRoomFromState(
 
 export async function deleteRoom(id: string, propertyId: string) {
   const user = await requireAuth();
+
+  const room = await prisma.room.findFirst({
+    where: { id, userId: user.id },
+    select: { id: true, isDefaultWholePropertyRoom: true },
+  });
+  if (!room) throw new Error("Room not found.");
+  if (room.isDefaultWholePropertyRoom) {
+    throw new Error("The whole-property unit is managed by the property and cannot be deleted directly.");
+  }
 
   const activeOccupancy = await prisma.occupancy.findFirst({
     where: { roomId: id, status: "ACTIVE", userId: user.id },

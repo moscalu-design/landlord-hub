@@ -22,10 +22,13 @@ function periodIsBefore(a: PaymentPeriod, b: PaymentPeriod) {
   return a.year < b.year || (a.year === b.year && a.month < b.month);
 }
 
-export async function createOccupancy(formData: FormData) {
-  const user = await requireAuth();
+async function performCreateOccupancy(
+  user: { id: string },
+  formData: FormData,
+  options?: { roomIdOverride?: string }
+): Promise<{ occupancyId: string; roomId: string; propertyId: string; tenantId: string }> {
   const validated = OccupancySchema.parse({
-    roomId: formData.get("roomId"),
+    roomId: options?.roomIdOverride ?? formData.get("roomId"),
     tenantId: formData.get("tenantId"),
     leaseStart: formData.get("leaseStart"),
     leaseEnd: formData.get("leaseEnd") || undefined,
@@ -41,7 +44,10 @@ export async function createOccupancy(formData: FormData) {
 
   // Prevent assigning to an already-occupied room or a tenant with an active lease
   const [roomForUser, tenantForUser, occupiedRoom, activeTenantLease] = await Promise.all([
-    prisma.room.findFirst({ where: { id: validated.roomId, userId: user.id }, select: { id: true } }),
+    prisma.room.findFirst({
+      where: { id: validated.roomId, userId: user.id },
+      select: { id: true, propertyId: true, name: true },
+    }),
     prisma.tenant.findFirst({ where: { id: validated.tenantId, userId: user.id }, select: { id: true } }),
     prisma.occupancy.findFirst({ where: { roomId: validated.roomId, status: "ACTIVE", userId: user.id } }),
     prisma.occupancy.findFirst({ where: { tenantId: validated.tenantId, status: "ACTIVE", userId: user.id } }),
@@ -72,7 +78,6 @@ export async function createOccupancy(formData: FormData) {
     },
   });
 
-  // Create the deposit record
   await prisma.deposit.create({
     data: {
       occupancyId: occupancy.id,
@@ -81,33 +86,25 @@ export async function createOccupancy(formData: FormData) {
     },
   });
 
-  // Set room status to OCCUPIED
   await prisma.room.update({
     where: { id: validated.roomId, userId: user.id },
     data: { status: "OCCUPIED" },
   });
 
-  const room = await prisma.room.findUnique({
-    where: { id: validated.roomId, userId: user.id },
-    include: { property: true },
-  });
-
   await prisma.activityLog.create({
     data: {
       action: "TENANT_ASSIGNED",
-      description: `Tenant assigned to room "${room?.name}"`,
+      description: `Tenant assigned to room "${roomForUser.name}"`,
       entityType: "OCCUPANCY",
       entityId: occupancy.id,
       userId: user.id,
-      propertyId: room?.propertyId,
+      propertyId: roomForUser.propertyId,
       roomId: validated.roomId,
       tenantId: validated.tenantId,
       occupancyId: occupancy.id,
     },
   });
 
-  // Generate payment records from the lease start, plus one upcoming period for
-  // already-started tenancies so early payments can target the next rent month.
   const periods = listPaymentPeriodsForOccupancy({ leaseStart });
   const payments = periods.map((period) => {
     const dueDate = getPaymentDueDate({
@@ -136,9 +133,68 @@ export async function createOccupancy(formData: FormData) {
     await prisma.payment.createMany({ data: payments });
   }
 
-  revalidatePath(`/rooms/${validated.roomId}`);
-  revalidatePath(`/tenants/${validated.tenantId}`);
-  redirect(`/rooms/${validated.roomId}`);
+  return {
+    occupancyId: occupancy.id,
+    roomId: validated.roomId,
+    propertyId: roomForUser.propertyId,
+    tenantId: validated.tenantId,
+  };
+}
+
+// Resolves the hidden Room used as the rentable unit for a FULL_PROPERTY
+// property. Server-only — never trusts a roomId from the client for this mode.
+export async function createWholePropertyOccupancy(propertyId: string, formData: FormData) {
+  const user = await requireAuth();
+
+  const property = await prisma.property.findFirst({
+    where: { id: propertyId, userId: user.id },
+    select: { id: true, rentalMode: true, monthlyRent: true },
+  });
+  if (!property) throw new Error("Property not found.");
+  if (property.rentalMode !== "FULL_PROPERTY") {
+    throw new Error("This property is not configured for whole-property rental.");
+  }
+
+  const room = await prisma.room.findFirst({
+    where: {
+      propertyId,
+      userId: user.id,
+      isDefaultWholePropertyRoom: true,
+    },
+    select: { id: true, monthlyRent: true, depositAmount: true },
+  });
+  if (!room) {
+    throw new Error(
+      "Whole-property unit is missing. Re-save the property to recreate it."
+    );
+  }
+
+  const enriched = new FormData();
+  for (const [key, value] of formData.entries()) {
+    enriched.set(key, value);
+  }
+  if (!enriched.get("monthlyRent")) {
+    enriched.set("monthlyRent", String(property.monthlyRent ?? room.monthlyRent));
+  }
+  if (!enriched.get("depositRequired")) {
+    enriched.set("depositRequired", String(room.depositAmount || property.monthlyRent || 0));
+  }
+
+  const result = await performCreateOccupancy(user, enriched, { roomIdOverride: room.id });
+
+  revalidatePath(`/properties/${propertyId}`);
+  revalidatePath(`/properties/${propertyId}/payments`);
+  revalidatePath(`/tenants/${result.tenantId}`);
+  redirect(`/properties/${propertyId}`);
+}
+
+export async function createOccupancy(formData: FormData) {
+  const user = await requireAuth();
+  const result = await performCreateOccupancy(user, formData);
+
+  revalidatePath(`/rooms/${result.roomId}`);
+  revalidatePath(`/tenants/${result.tenantId}`);
+  redirect(`/rooms/${result.roomId}`);
 }
 
 export async function endOccupancy(occupancyId: string, formData?: FormData) {
@@ -190,6 +246,13 @@ export async function endOccupancy(occupancyId: string, formData?: FormData) {
 
   revalidatePath(`/rooms/${occupancy.roomId}`);
   revalidatePath(`/tenants/${occupancy.tenantId}`);
+  // For whole-property rentals the hidden room has no user-facing page;
+  // bounce back to the property instead.
+  if (occupancy.room.isDefaultWholePropertyRoom) {
+    revalidatePath(`/properties/${occupancy.room.propertyId}`);
+    revalidatePath(`/properties/${occupancy.room.propertyId}/payments`);
+    redirect(`/properties/${occupancy.room.propertyId}`);
+  }
   redirect(`/rooms/${occupancy.roomId}`);
 }
 

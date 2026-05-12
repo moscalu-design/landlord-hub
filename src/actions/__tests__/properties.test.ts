@@ -4,7 +4,16 @@ const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   prisma: {
     property: {
+      findUnique: vi.fn(),
       update: vi.fn(),
+    },
+    occupancy: {
+      findFirst: vi.fn(),
+    },
+    room: {
+      findFirst: vi.fn(),
+      update: vi.fn(),
+      create: vi.fn(),
     },
   },
   revalidatePath: vi.fn(),
@@ -16,7 +25,12 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/auth", () => ({ auth: mocks.auth }));
 vi.mock("@/lib/prisma", () => ({ default: mocks.prisma }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
-vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
+vi.mock("next/navigation", () => ({
+  redirect: mocks.redirect,
+  unstable_rethrow: vi.fn((error: unknown) => {
+    throw error;
+  }),
+}));
 
 import { updateProperty } from "@/actions/properties";
 
@@ -24,7 +38,9 @@ describe("property actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.auth.mockResolvedValue({ user: { id: "user-a", email: "a@example.com" } });
+    mocks.prisma.property.findUnique.mockResolvedValue({ id: "prop-b", rentalMode: "ROOM_LEVEL" });
     mocks.prisma.property.update.mockResolvedValue({ id: "prop-b" });
+    mocks.prisma.occupancy.findFirst.mockResolvedValue(null);
   });
 
   it("updates records only through the current user's owner scope", async () => {

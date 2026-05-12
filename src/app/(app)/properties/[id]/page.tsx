@@ -6,11 +6,15 @@ import { PropertyCostsSummary } from "@/components/properties/PropertyCostsSumma
 import { PropertyMortgageSummary } from "@/components/properties/PropertyMortgageSummary";
 import { PropertyPerformanceChart } from "@/components/properties/PropertyPerformanceChart";
 import { PropertySubnav } from "@/components/properties/PropertySubnav";
+import { WholePropertyAssignTenant } from "@/components/properties/WholePropertyTenancySection";
+import { EndTenancyForm } from "@/components/rooms/EndTenancyForm";
+import { RecordPaymentForm } from "@/components/payments/RecordPaymentForm";
+import { PaymentStatusBadge } from "@/components/shared/StatusBadge";
 import { buildChartData } from "@/components/properties/propertyPerformanceData";
 import { RoomStatusBadge } from "@/components/shared/StatusBadge";
 import { getMonthlyCostForMonth } from "@/lib/mortgage";
 import { getExpenseTotalForMonth } from "@/lib/expenses";
-import { getDisplayRoomStatus, summarizeRooms } from "@/lib/roomOccupancy";
+import { getDisplayRoomStatus, isVisibleRoom, summarizeRooms } from "@/lib/roomOccupancy";
 import { ensureRentPaymentsForProperty } from "@/lib/billing";
 import prisma from "@/lib/prisma";
 import { computePaymentStatus, formatCurrency, formatDate, toDateInputValue } from "@/lib/utils";
@@ -29,7 +33,6 @@ export default async function PropertyDetailPage({
   const thisMonth = now.getMonth() + 1;
   const todayInputValue = toDateInputValue(now);
 
-  // Last 12 months for chart query
   const chartMonthFilter = Array.from({ length: 12 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     return { periodYear: d.getFullYear(), periodMonth: d.getMonth() + 1 };
@@ -46,7 +49,8 @@ export default async function PropertyDetailPage({
               include: {
                 tenant: true,
                 payments: {
-                  where: { periodYear: thisYear, periodMonth: thisMonth },
+                  orderBy: [{ periodYear: "desc" }, { periodMonth: "desc" }],
+                  take: 24,
                 },
               },
             },
@@ -82,20 +86,51 @@ export default async function PropertyDetailPage({
 
   if (!property) notFound();
 
+  const isFullProperty = property.rentalMode === "FULL_PROPERTY";
+  const visibleRooms = property.rooms.filter(isVisibleRoom);
+  const wholePropertyRoom = property.rooms.find((r) => r.isDefaultWholePropertyRoom);
+  const wholePropertyOccupancy = wholePropertyRoom?.occupancies.find((o) => o.status === "ACTIVE");
+
   const { totalRooms, occupiedRooms, vacantRooms, monthlyIncome } = summarizeRooms(property.rooms);
   const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
 
-  // Monthly costs = expenses for this month (recurring + one-off) + active mortgage payments
   const monthlyExpenses = getExpenseTotalForMonth(property.expenses, thisYear, thisMonth);
-
   const monthlyMortgages = property.mortgages
     .reduce((sum, mortgage) => sum + getMonthlyCostForMonth(mortgage, thisYear, thisMonth), 0);
-
-  // Monthly profit = income - costs (expenses + mortgages)
   const monthlyProfit = monthlyIncome - monthlyExpenses - monthlyMortgages;
-
-  // Chart data (mortgages included in costs)
   const chartData = buildChartData(property.expenses, chartPayments, property.mortgages);
+
+  // Available tenants for assignment (no active occupancy)
+  const availableTenants = isFullProperty
+    ? await prisma.tenant.findMany({
+        where: {
+          userId: user.id,
+          status: "ACTIVE",
+          occupancies: { none: { status: "ACTIVE" } },
+        },
+        orderBy: { firstName: "asc" },
+      })
+    : [];
+
+  // Whole-property current period payment & next due
+  const wpCurrentPayment = wholePropertyOccupancy?.payments.find(
+    (p) => p.periodYear === thisYear && p.periodMonth === thisMonth,
+  );
+  const wpUpcoming = wholePropertyOccupancy?.payments
+    .filter((p) => {
+      const isFuture =
+        p.periodYear > thisYear ||
+        (p.periodYear === thisYear && p.periodMonth > thisMonth);
+      const isUnpaid = computePaymentStatus(p) !== "PAID";
+      return isFuture && isUnpaid;
+    })
+    .sort((a, b) => {
+      if (a.periodYear !== b.periodYear) return a.periodYear - b.periodYear;
+      return a.periodMonth - b.periodMonth;
+    })[0];
+  const wpOverdue = wholePropertyOccupancy?.payments
+    .filter((p) => computePaymentStatus(p) === "OVERDUE")
+    .reduce((sum, p) => sum + Math.max(0, p.amountDue - p.amountPaid), 0) ?? 0;
 
   return (
     <div className="flex flex-col flex-1">
@@ -122,25 +157,51 @@ export default async function PropertyDetailPage({
 
         {/* ── Summary cards ─────────────────────────────────────────────── */}
         <div data-testid="property-summary-cards" className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
-          <div data-testid="property-summary-total-rooms" className="rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm shadow-slate-200/40">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Rooms</p>
-            <p className="text-2xl font-bold text-slate-900 mt-1">{totalRooms}</p>
-          </div>
+          {isFullProperty ? (
+            <div data-testid="property-summary-mode" className="rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm shadow-slate-200/40">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Rental Mode</p>
+              <p className="text-base font-bold text-slate-900 mt-1">Whole property</p>
+              <p className="text-xs text-slate-400 mt-1">Single tenancy</p>
+            </div>
+          ) : (
+            <div data-testid="property-summary-total-rooms" className="rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm shadow-slate-200/40">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Rooms</p>
+              <p className="text-2xl font-bold text-slate-900 mt-1">{totalRooms}</p>
+            </div>
+          )}
 
-          <div data-testid="property-summary-vacant" className="rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm shadow-slate-200/40">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Vacant</p>
-            <p className="text-2xl font-bold text-slate-900 mt-1">{vacantRooms}</p>
-            {totalRooms > 0 && (
-              <p className="text-xs text-slate-400 mt-1">{occupancyRate}% occupied</p>
-            )}
-          </div>
+          {!isFullProperty && (
+            <div data-testid="property-summary-vacant" className="rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm shadow-slate-200/40">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Vacant</p>
+              <p className="text-2xl font-bold text-slate-900 mt-1">{vacantRooms}</p>
+              {totalRooms > 0 && (
+                <p className="text-xs text-slate-400 mt-1">{occupancyRate}% occupied</p>
+              )}
+            </div>
+          )}
+
+          {isFullProperty && (
+            <div data-testid="property-summary-status" className="rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm shadow-slate-200/40">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Status</p>
+              <p className="text-base font-bold text-slate-900 mt-1">
+                {wholePropertyOccupancy ? "Tenanted" : "Vacant"}
+              </p>
+              {wholePropertyOccupancy && (
+                <p className="text-xs text-slate-400 mt-1 truncate">
+                  Since {formatDate(wholePropertyOccupancy.leaseStart)}
+                </p>
+              )}
+            </div>
+          )}
 
           <div data-testid="property-summary-income" className="rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm shadow-slate-200/40">
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Monthly Income</p>
             <p className="mt-1 truncate text-2xl font-bold text-slate-900">
-              {formatCurrency(monthlyIncome)}
+              {formatCurrency(isFullProperty ? (wholePropertyOccupancy?.monthlyRent ?? property.monthlyRent ?? 0) : monthlyIncome)}
             </p>
-            <p className="text-xs text-slate-400 mt-1">contracted rent</p>
+            <p className="text-xs text-slate-400 mt-1">
+              {isFullProperty ? "whole-property rent" : "contracted rent"}
+            </p>
           </div>
 
           <div data-testid="property-summary-profit" className="rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm shadow-slate-200/40">
@@ -156,6 +217,156 @@ export default async function PropertyDetailPage({
             <p className="text-xs text-slate-400 mt-1">income − costs</p>
           </div>
         </div>
+
+        {/* ── Whole-property tenancy panel ─────────────────────────────── */}
+        {isFullProperty && (
+          <div data-testid="whole-property-tenancy-section" className="space-y-3">
+            <h2 className="text-sm font-semibold text-slate-800">Whole Property Tenancy</h2>
+            {wholePropertyOccupancy ? (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div data-testid="whole-property-tenant-card" className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-slate-800">Current Tenant</h3>
+                    <EndTenancyForm
+                      occupancyId={wholePropertyOccupancy.id}
+                      todayInputValue={todayInputValue}
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href={`/tenants/${wholePropertyOccupancy.tenantId}`}
+                      className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-sm shrink-0 hover:bg-blue-200 transition-colors"
+                    >
+                      {wholePropertyOccupancy.tenant.firstName[0]}
+                      {wholePropertyOccupancy.tenant.lastName[0]}
+                    </Link>
+                    <div>
+                      <Link
+                        href={`/tenants/${wholePropertyOccupancy.tenantId}`}
+                        className="font-medium text-slate-800 hover:text-blue-600 transition-colors text-sm"
+                      >
+                        {wholePropertyOccupancy.tenant.firstName}{" "}
+                        {wholePropertyOccupancy.tenant.lastName}
+                      </Link>
+                      {wholePropertyOccupancy.tenant.email && (
+                        <p className="text-xs text-slate-500">{wholePropertyOccupancy.tenant.email}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2 pt-2 border-t border-slate-100">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Lease Start</span>
+                      <span className="font-medium text-slate-700">
+                        {formatDate(wholePropertyOccupancy.leaseStart)}
+                      </span>
+                    </div>
+                    {wholePropertyOccupancy.leaseEnd && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Lease End</span>
+                        <span className="font-medium text-slate-700">
+                          {formatDate(wholePropertyOccupancy.leaseEnd)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Monthly Rent</span>
+                      <span className="font-medium text-slate-700">
+                        {formatCurrency(wholePropertyOccupancy.monthlyRent)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div data-testid="whole-property-payment-card" className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-slate-800">This Month</h3>
+                    {wpCurrentPayment && (
+                      <PaymentStatusBadge
+                        status={computePaymentStatus(wpCurrentPayment)}
+                        size="sm"
+                      />
+                    )}
+                  </div>
+                  {wpCurrentPayment ? (
+                    <>
+                      <p className="text-2xl font-bold text-slate-900">
+                        {formatCurrency(wpCurrentPayment.amountDue)}
+                      </p>
+                      <div className="text-xs text-slate-500 space-y-1">
+                        <p>Due {formatDate(wpCurrentPayment.dueDate)}</p>
+                        <p>Paid {formatCurrency(wpCurrentPayment.amountPaid)}</p>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-slate-500">No payment record yet.</p>
+                  )}
+                  {wpUpcoming && (
+                    <div className="pt-3 border-t border-slate-100 text-xs text-slate-500">
+                      Next due {formatDate(wpUpcoming.dueDate)} ·{" "}
+                      {formatCurrency(wpUpcoming.amountDue)}
+                    </div>
+                  )}
+                  {wpOverdue > 0 && (
+                    <div className="pt-3 border-t border-slate-100">
+                      <p className="text-xs font-medium text-red-600">
+                        Overdue: {formatCurrency(wpOverdue)}
+                      </p>
+                    </div>
+                  )}
+                  <Link
+                    href={`/properties/${id}/payments`}
+                    className="block text-xs font-medium text-blue-600 hover:text-blue-700"
+                  >
+                    View all payments →
+                  </Link>
+                </div>
+
+                <div data-testid="whole-property-record-payment-card" className="bg-white border border-slate-200 rounded-xl p-5">
+                  <div className="mb-4">
+                    <h3 className="text-sm font-semibold text-slate-800">Record Payment</h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Choose a period and save the payment with the button below.
+                    </p>
+                  </div>
+                  <RecordPaymentForm
+                    currentYear={thisYear}
+                    currentMonth={thisMonth}
+                    todayInputValue={todayInputValue}
+                    payments={wholePropertyOccupancy.payments}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div
+                data-testid="whole-property-vacant-state"
+                className="bg-white border border-slate-200 rounded-xl p-6"
+              >
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-800">
+                      No current tenant
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-1">
+                      Start a tenancy to begin billing the whole-property rent of{" "}
+                      {formatCurrency(property.monthlyRent ?? 0)}.
+                    </p>
+                  </div>
+                  {property.monthlyRent != null && (
+                    <WholePropertyAssignTenant
+                      propertyId={id}
+                      monthlyRent={property.monthlyRent}
+                      tenants={availableTenants}
+                      todayInputValue={todayInputValue}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Static property information ─────────────────────────────── */}
+        <PropertyStaticInfo property={property} />
 
         {/* ── Financial performance chart ────────────────────────────────── */}
         <div id="financials">
@@ -174,92 +385,187 @@ export default async function PropertyDetailPage({
           todayInputValue={todayInputValue}
         />
 
-        {/* ── Rooms ─────────────────────────────────────────────────────── */}
-        <div id="rooms" data-testid="property-rooms-section" className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-800">Rooms</h2>
-            <Link
-              href={`/properties/${id}/rooms/new`}
-              className="rounded-md text-xs font-medium text-blue-600 hover:text-blue-700"
-            >
-              + Add Room
-            </Link>
-          </div>
-
-          {property.rooms.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-xl p-8 text-center">
-              <p className="text-sm text-slate-500">No rooms yet.</p>
+        {/* ── Rooms (room-level mode only) ──────────────────────────────── */}
+        {!isFullProperty && (
+          <div id="rooms" data-testid="property-rooms-section" className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-800">Rooms</h2>
               <Link
                 href={`/properties/${id}/rooms/new`}
-                className="mt-3 inline-block text-sm text-blue-600 font-medium"
+                className="rounded-md text-xs font-medium text-blue-600 hover:text-blue-700"
               >
-                Add first room →
+                + Add Room
               </Link>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {property.rooms.map((room) => {
-                const activeOccupancy = room.occupancies[0];
-                const currentPayment = activeOccupancy?.payments[0];
-                const currentPaymentStatus = currentPayment ? computePaymentStatus(currentPayment) : null;
 
-                return (
-                  <Link
-                    key={room.id}
-                    href={`/rooms/${room.id}`}
-                    data-testid="room-link"
-                    className="group flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3.5 shadow-sm shadow-slate-200/40 transition hover:border-blue-300 hover:shadow-md sm:px-5"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-medium text-slate-800 group-hover:text-blue-600 transition-colors">
-                          {room.name}
-                        </h3>
-                        <RoomStatusBadge status={getDisplayRoomStatus(room)} size="sm" />
-                      </div>
-                      {activeOccupancy ? (
-                        <p className="text-xs text-slate-500 mt-0.5 truncate">
-                          {activeOccupancy.tenant.firstName}{" "}
-                          {activeOccupancy.tenant.lastName}
-                          {" · "}Since {formatDate(activeOccupancy.leaseStart)}
-                        </p>
-                      ) : (
-                        <p className="text-xs text-slate-400 mt-0.5">Vacant</p>
-                      )}
-                    </div>
+            {visibleRooms.length === 0 ? (
+              <div className="bg-white border border-slate-200 rounded-xl p-8 text-center">
+                <p className="text-sm text-slate-500">No rooms yet.</p>
+                <Link
+                  href={`/properties/${id}/rooms/new`}
+                  className="mt-3 inline-block text-sm text-blue-600 font-medium"
+                >
+                  Add first room →
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {visibleRooms.map((room) => {
+                  const activeOccupancy = room.occupancies[0];
+                  const currentPayment = activeOccupancy?.payments.find(
+                    (p) => p.periodYear === thisYear && p.periodMonth === thisMonth,
+                  );
+                  const currentPaymentStatus = currentPayment ? computePaymentStatus(currentPayment) : null;
 
-                    <div className="flex items-center gap-3 shrink-0">
-                      <div className="text-right">
-                        <p className="whitespace-nowrap text-sm font-semibold text-slate-800">
-                          {formatCurrency(room.monthlyRent)}
-                        </p>
-                        <p className="text-xs text-slate-500">/ mo</p>
+                  return (
+                    <Link
+                      key={room.id}
+                      href={`/rooms/${room.id}`}
+                      data-testid="room-link"
+                      className="group flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3.5 shadow-sm shadow-slate-200/40 transition hover:border-blue-300 hover:shadow-md sm:px-5"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-medium text-slate-800 group-hover:text-blue-600 transition-colors">
+                            {room.name}
+                          </h3>
+                          <RoomStatusBadge status={getDisplayRoomStatus(room)} size="sm" />
+                        </div>
+                        {activeOccupancy ? (
+                          <p className="text-xs text-slate-500 mt-0.5 truncate">
+                            {activeOccupancy.tenant.firstName}{" "}
+                            {activeOccupancy.tenant.lastName}
+                            {" · "}Since {formatDate(activeOccupancy.leaseStart)}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-slate-400 mt-0.5">Vacant</p>
+                        )}
                       </div>
-                      {currentPayment && (
-                        <span
-                          className={`hidden sm:inline-flex text-xs font-medium px-2 py-0.5 rounded-full ${
-                            currentPaymentStatus === "PAID"
-                              ? "bg-green-100 text-green-800"
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-right">
+                          <p className="whitespace-nowrap text-sm font-semibold text-slate-800">
+                            {formatCurrency(room.monthlyRent)}
+                          </p>
+                          <p className="text-xs text-slate-500">/ mo</p>
+                        </div>
+                        {currentPayment && (
+                          <span
+                            className={`hidden sm:inline-flex text-xs font-medium px-2 py-0.5 rounded-full ${
+                              currentPaymentStatus === "PAID"
+                                ? "bg-green-100 text-green-800"
+                                : currentPaymentStatus === "OVERDUE"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-amber-100 text-amber-800"
+                            }`}
+                          >
+                            {currentPaymentStatus === "PAID"
+                              ? "Paid"
                               : currentPaymentStatus === "OVERDUE"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-amber-100 text-amber-800"
-                          }`}
-                        >
-                          {currentPaymentStatus === "PAID"
-                            ? "Paid"
-                            : currentPaymentStatus === "OVERDUE"
-                            ? "Overdue"
-                            : "Unpaid"}
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
+                              ? "Overdue"
+                              : "Unpaid"}
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PropertyStaticInfo({
+  property,
+}: {
+  property: {
+    propertyType: string;
+    totalRoomCount: number | null;
+    bedroomCount: number | null;
+    bathroomCount: number | null;
+    surfaceAreaSqm: number | null;
+    hasTerrace: boolean;
+    hasBalcony: boolean;
+    hasGarden: boolean;
+    hasParking: boolean;
+    isFurnished: boolean;
+    description: string | null;
+    postcode: string | null;
+    country: string;
+  };
+}) {
+  const features = [
+    property.hasTerrace && "Terrace",
+    property.hasBalcony && "Balcony",
+    property.hasGarden && "Garden",
+    property.hasParking && "Parking",
+    property.isFurnished && "Furnished",
+  ].filter(Boolean) as string[];
+
+  const hasAnyField =
+    property.totalRoomCount != null ||
+    property.bedroomCount != null ||
+    property.bathroomCount != null ||
+    property.surfaceAreaSqm != null ||
+    features.length > 0 ||
+    property.description;
+
+  if (!hasAnyField) return null;
+
+  return (
+    <div data-testid="property-static-info" className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 space-y-4">
+      <h2 className="text-sm font-semibold text-slate-800">Property Information</h2>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {property.totalRoomCount != null && (
+          <div>
+            <p className="text-xs text-slate-500">Total Rooms</p>
+            <p className="text-base font-semibold text-slate-800">{property.totalRoomCount}</p>
+          </div>
+        )}
+        {property.bedroomCount != null && (
+          <div>
+            <p className="text-xs text-slate-500">Bedrooms</p>
+            <p className="text-base font-semibold text-slate-800">{property.bedroomCount}</p>
+          </div>
+        )}
+        {property.bathroomCount != null && (
+          <div>
+            <p className="text-xs text-slate-500">Bathrooms</p>
+            <p className="text-base font-semibold text-slate-800">{property.bathroomCount}</p>
+          </div>
+        )}
+        {property.surfaceAreaSqm != null && (
+          <div>
+            <p className="text-xs text-slate-500">Surface</p>
+            <p className="text-base font-semibold text-slate-800">{property.surfaceAreaSqm} m²</p>
+          </div>
+        )}
+        <div>
+          <p className="text-xs text-slate-500">Type</p>
+          <p className="text-base font-semibold text-slate-800 capitalize">
+            {property.propertyType.toLowerCase()}
+          </p>
         </div>
       </div>
+      {features.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {features.map((feature) => (
+            <span
+              key={feature}
+              className="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded-full"
+            >
+              {feature}
+            </span>
+          ))}
+        </div>
+      )}
+      {property.description && (
+        <p className="text-sm text-slate-600 whitespace-pre-wrap">{property.description}</p>
+      )}
     </div>
   );
 }

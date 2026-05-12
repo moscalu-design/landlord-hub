@@ -145,7 +145,10 @@ export default async function DashboardPage() {
                         {payment.occupancy.tenant.firstName} {payment.occupancy.tenant.lastName}
                       </p>
                       <p className="text-xs text-slate-500">
-                        {payment.occupancy.room.property.name} · {payment.occupancy.room.name}
+                        {payment.occupancy.room.property.name}
+                        {payment.occupancy.room.isDefaultWholePropertyRoom
+                          ? " · Whole property"
+                          : ` · ${payment.occupancy.room.name}`}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-3 sm:ml-4">

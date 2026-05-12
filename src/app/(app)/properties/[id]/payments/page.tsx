@@ -47,12 +47,15 @@ export default async function PropertyPaymentsPage({
 
   if (!property) notFound();
 
+  const isFullProperty = property.rentalMode === "FULL_PROPERTY";
   const payments: PropertyPaymentRow[] = property.rooms.flatMap((room) =>
     room.occupancies.flatMap((occupancy) =>
       occupancy.payments.map((payment) => ({
         id: payment.id,
         tenantName: `${occupancy.tenant.firstName} ${occupancy.tenant.lastName}`,
-        roomName: room.name,
+        // For whole-property rentals, hide the synthetic "Whole property" room
+        // name and just label the unit. For room-level rentals, keep room names.
+        roomName: isFullProperty || room.isDefaultWholePropertyRoom ? "Whole property" : room.name,
         periodYear: payment.periodYear,
         periodMonth: payment.periodMonth,
         amountDue: payment.amountDue,

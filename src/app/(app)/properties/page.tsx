@@ -20,7 +20,6 @@ async function getProperties() {
           },
         },
       },
-      _count: { select: { rooms: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -64,8 +63,8 @@ export default async function PropertiesPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
             {properties.map((property) => {
-              const { occupiedRooms, monthlyIncome } = summarizeRooms(property.rooms);
-              const totalRooms = property._count.rooms;
+              const isFullProperty = property.rentalMode === "FULL_PROPERTY";
+              const { totalRooms, occupiedRooms, monthlyIncome } = summarizeRooms(property.rooms);
               const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
 
               return (
@@ -98,16 +97,39 @@ export default async function PropertiesPage() {
                   </div>
 
                   <div className="mt-auto grid grid-cols-3 gap-3 border-t border-slate-100 pt-4">
+                    {isFullProperty ? (
+                      <>
+                        <div className="min-w-0">
+                          <p className="truncate text-base font-bold text-slate-800">
+                            {occupiedRooms === 0 ? "Vacant" : "Tenanted"}
+                          </p>
+                          <p className="text-xs text-slate-500">Status</p>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-base font-bold text-slate-800">Whole</p>
+                          <p className="text-xs text-slate-500">Rental</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="min-w-0">
+                          <p className="truncate text-lg font-bold text-slate-800">{occupiedRooms}<span className="text-sm text-slate-400 font-medium">/{totalRooms}</span></p>
+                          <p className="text-xs text-slate-500">Occupied</p>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-lg font-bold text-slate-800">{occupancyRate}<span className="text-sm text-slate-400 font-medium">%</span></p>
+                          <p className="text-xs text-slate-500">Occupancy</p>
+                        </div>
+                      </>
+                    )}
                     <div className="min-w-0">
-                      <p className="truncate text-lg font-bold text-slate-800">{occupiedRooms}<span className="text-sm text-slate-400 font-medium">/{totalRooms}</span></p>
-                      <p className="text-xs text-slate-500">Occupied</p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-lg font-bold text-slate-800">{occupancyRate}<span className="text-sm text-slate-400 font-medium">%</span></p>
-                      <p className="text-xs text-slate-500">Occupancy</p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-base font-bold text-slate-800 sm:text-lg">{formatCurrency(monthlyIncome)}</p>
+                      <p className="truncate text-base font-bold text-slate-800 sm:text-lg">
+                        {formatCurrency(
+                          isFullProperty
+                            ? monthlyIncome || (property.monthlyRent ?? 0)
+                            : monthlyIncome,
+                        )}
+                      </p>
                       <p className="text-xs text-slate-500">/ month</p>
                     </div>
                   </div>

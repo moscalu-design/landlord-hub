@@ -24,16 +24,61 @@ export type SignupInput = z.infer<typeof SignupSchema>;
 
 // ─── Property ─────────────────────────────────────────────────────────────────
 
-export const PropertySchema = z.object({
-  name: z.string().min(1, "Name is required").max(100),
-  address: z.string().min(1, "Address is required").max(200),
-  city: z.string().min(1, "City is required").max(100),
-  postcode: z.string().max(20).optional().or(z.literal("")),
-  country: z.string().default("UK"),
-  propertyType: z.enum(["HOUSE", "APARTMENT", "HMO", "STUDIO", "OTHER"]).default("HOUSE"),
-  status: z.enum(["ACTIVE", "INACTIVE", "ARCHIVED"]).default("ACTIVE"),
-  notes: z.string().max(2000).optional().or(z.literal("")),
-});
+export const RENTAL_MODES = ["ROOM_LEVEL", "FULL_PROPERTY"] as const;
+export type RentalMode = (typeof RENTAL_MODES)[number];
+
+const optionalNonNegativeInt = z
+  .union([z.string(), z.number(), z.null(), z.undefined()])
+  .transform((value) => {
+    if (value === null || value === undefined || value === "") return null;
+    const n = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(n) ? Math.trunc(n) : null;
+  })
+  .refine((value) => value === null || value >= 0, "Must be 0 or more");
+
+const optionalNonNegativeFloat = z
+  .union([z.string(), z.number(), z.null(), z.undefined()])
+  .transform((value) => {
+    if (value === null || value === undefined || value === "") return null;
+    const n = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(n) ? n : null;
+  })
+  .refine((value) => value === null || value >= 0, "Must be 0 or more");
+
+export const PropertySchema = z
+  .object({
+    name: z.string().min(1, "Name is required").max(100),
+    address: z.string().min(1, "Address is required").max(200),
+    city: z.string().min(1, "City is required").max(100),
+    postcode: z.string().max(20).optional().or(z.literal("")),
+    country: z.string().default("UK"),
+    propertyType: z.enum(["HOUSE", "APARTMENT", "HMO", "STUDIO", "OTHER"]).default("HOUSE"),
+    status: z.enum(["ACTIVE", "INACTIVE", "ARCHIVED"]).default("ACTIVE"),
+    rentalMode: z.enum(RENTAL_MODES).default("ROOM_LEVEL"),
+    monthlyRent: optionalNonNegativeFloat,
+    totalRoomCount: optionalNonNegativeInt,
+    bedroomCount: optionalNonNegativeInt,
+    bathroomCount: optionalNonNegativeInt,
+    surfaceAreaSqm: optionalNonNegativeFloat,
+    hasTerrace: z.boolean().default(false),
+    hasBalcony: z.boolean().default(false),
+    hasGarden: z.boolean().default(false),
+    hasParking: z.boolean().default(false),
+    isFurnished: z.boolean().default(false),
+    description: z.string().max(4000).optional().or(z.literal("")),
+    notes: z.string().max(2000).optional().or(z.literal("")),
+  })
+  .superRefine((data, ctx) => {
+    if (data.rentalMode === "FULL_PROPERTY") {
+      if (data.monthlyRent === null || data.monthlyRent === undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Monthly rent is required for whole-property rentals",
+          path: ["monthlyRent"],
+        });
+      }
+    }
+  });
 
 export type PropertyInput = z.infer<typeof PropertySchema>;
 

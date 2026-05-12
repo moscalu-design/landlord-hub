@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { TopBar } from "@/components/layout/TopBar";
 import { RoomForm } from "@/components/rooms/RoomForm";
@@ -14,6 +14,9 @@ export default async function NewRoomPage({
   const user = await requireUser();
   const property = await prisma.property.findUnique({ where: { id, userId: user.id } });
   if (!property) notFound();
+  if (property.rentalMode === "FULL_PROPERTY") {
+    redirect(`/properties/${id}`);
+  }
 
   return (
     <div className="flex flex-col flex-1">

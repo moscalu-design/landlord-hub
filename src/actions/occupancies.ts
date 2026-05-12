@@ -12,6 +12,7 @@ import {
   toBillingDate,
   type PaymentPeriod,
 } from "@/lib/occupancyPayments";
+import { computePaymentStatus } from "@/lib/utils";
 
 async function requireAuth() {
   return requireUser();
@@ -108,20 +109,28 @@ export async function createOccupancy(formData: FormData) {
   // Generate payment records from the lease start, plus one upcoming period for
   // already-started tenancies so early payments can target the next rent month.
   const periods = listPaymentPeriodsForOccupancy({ leaseStart });
-  const payments = periods.map((period) => ({
-    userId: user.id,
-    occupancyId: occupancy.id,
-    periodYear: period.year,
-    periodMonth: period.month,
-    amountDue: validated.monthlyRent,
-    dueDate: getPaymentDueDate({
+  const payments = periods.map((period) => {
+    const dueDate = getPaymentDueDate({
       leaseStart,
       period,
       rentDueDay: validated.rentDueDay,
       paymentGracePeriodDays: validated.paymentGracePeriodDays,
-    }),
-    status: "UNPAID",
-  }));
+    });
+    return {
+      userId: user.id,
+      occupancyId: occupancy.id,
+      periodYear: period.year,
+      periodMonth: period.month,
+      amountDue: validated.monthlyRent,
+      dueDate,
+      status: computePaymentStatus({
+        amountDue: validated.monthlyRent,
+        amountPaid: 0,
+        status: "UNPAID",
+        dueDate,
+      }),
+    };
+  });
 
   if (payments.length > 0) {
     await prisma.payment.createMany({ data: payments });
@@ -260,20 +269,28 @@ export async function updateOccupancy(occupancyId: string, formData: FormData) {
   );
   const paymentsToCreate = targetPeriods
     .filter((period) => !existingKeys.has(periodKey(period)))
-    .map((period) => ({
-      userId: user.id,
-      occupancyId,
-      periodYear: period.year,
-      periodMonth: period.month,
-      amountDue: occupancy.monthlyRent,
-      dueDate: getPaymentDueDate({
+    .map((period) => {
+      const dueDate = getPaymentDueDate({
         leaseStart: newLeaseStart,
         period,
         rentDueDay: occupancy.rentDueDay,
         paymentGracePeriodDays: validated.paymentGracePeriodDays,
-      }),
-      status: "UNPAID" as const,
-    }));
+      });
+      return {
+        userId: user.id,
+        occupancyId,
+        periodYear: period.year,
+        periodMonth: period.month,
+        amountDue: occupancy.monthlyRent,
+        dueDate,
+        status: computePaymentStatus({
+          amountDue: occupancy.monthlyRent,
+          amountPaid: 0,
+          status: "UNPAID",
+          dueDate,
+        }),
+      };
+    });
 
   await prisma.$transaction(async (tx) => {
     await tx.occupancy.update({

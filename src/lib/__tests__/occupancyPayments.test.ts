@@ -34,7 +34,7 @@ describe("payment grace period helpers", () => {
     expect(getPaymentGracePeriodDays(null)).toBe(DEFAULT_PAYMENT_GRACE_PERIOD_DAYS);
   });
 
-  it("uses the lease start date as the first bill date", () => {
+  it("uses the configured due day as the bill date", () => {
     const billDate = getBillDateForPeriod({
       leaseStart: "2026-04-20",
       period: { year: 2026, month: 4 },
@@ -42,7 +42,7 @@ describe("payment grace period helpers", () => {
     });
     expect(billDate.getFullYear()).toBe(2026);
     expect(billDate.getMonth()).toBe(3);
-    expect(billDate.getDate()).toBe(20);
+    expect(billDate.getDate()).toBe(1);
   });
 
   it("uses the configured bill day for later periods", () => {
@@ -56,7 +56,7 @@ describe("payment grace period helpers", () => {
     expect(billDate.getDate()).toBe(1);
   });
 
-  it("sets due date to bill date plus the grace period", () => {
+  it("does not set the first due date before the lease exists", () => {
     const dueDate = getPaymentDueDate({
       leaseStart: "2026-04-20",
       period: { year: 2026, month: 4 },
@@ -65,7 +65,31 @@ describe("payment grace period helpers", () => {
     });
     expect(dueDate.getFullYear()).toBe(2026);
     expect(dueDate.getMonth()).toBe(3);
-    expect(dueDate.getDate()).toBe(25);
+    expect(dueDate.getDate()).toBe(20);
+  });
+
+  it("uses rent due day 5 as the fifth of the invoice month", () => {
+    const dueDate = getPaymentDueDate({
+      leaseStart: "2026-05-01",
+      period: { year: 2026, month: 5 },
+      rentDueDay: 5,
+      paymentGracePeriodDays: 0,
+    });
+    expect(dueDate.getFullYear()).toBe(2026);
+    expect(dueDate.getMonth()).toBe(4);
+    expect(dueDate.getDate()).toBe(5);
+  });
+
+  it("treats legacy 1st day plus 5-day setting as due by the fifth", () => {
+    const dueDate = getPaymentDueDate({
+      leaseStart: "2026-05-01",
+      period: { year: 2026, month: 5 },
+      rentDueDay: 1,
+      paymentGracePeriodDays: 5,
+    });
+    expect(dueDate.getFullYear()).toBe(2026);
+    expect(dueDate.getMonth()).toBe(4);
+    expect(dueDate.getDate()).toBe(5);
   });
 });
 

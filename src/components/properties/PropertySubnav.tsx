@@ -2,6 +2,7 @@ import Link from "next/link";
 
 const ITEMS = [
   { key: "overview", label: "Overview" },
+  { key: "payments", label: "Payments" },
   { key: "mortgages", label: "Mortgages" },
   { key: "costs", label: "Costs" },
 ] as const;
@@ -17,6 +18,7 @@ export function PropertySubnav({
 }) {
   const hrefs: Record<SubnavKey, string> = {
     overview: `/properties/${propertyId}`,
+    payments: `/properties/${propertyId}/payments`,
     mortgages: `/properties/${propertyId}/mortgages`,
     costs: `/properties/${propertyId}/costs`,
   };

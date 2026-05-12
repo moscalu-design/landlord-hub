@@ -2,9 +2,10 @@
 //
 // The app uses one payment row per calendar month, but the lease start date is the
 // billing source of truth:
-//   - The first bill is generated on the lease start date, even for mid-month starts.
-//   - Later calendar-month bills use the tenancy's configured bill day (`rentDueDay`).
-//   - Each bill is due `paymentGracePeriodDays` after its bill date.
+//   - Each calendar-month bill is due on the tenancy's configured due day
+//     (`rentDueDay`).
+//   - If the first lease month starts after that due day, the first bill is due
+//     on the lease start date so it is not due before the tenancy exists.
 //   - Active tenancies keep one upcoming period available so an operator can record
 //     an early payment against the next rent period without creating duplicates.
 
@@ -44,12 +45,6 @@ export function toBillingDate(value: Date | string): Date {
 
 function startOfMonth(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), 1, 12, 0, 0, 0);
-}
-
-function addDays(date: Date, days: number): Date {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
 }
 
 function daysInMonth(year: number, month: number): number {
@@ -124,13 +119,6 @@ export function getBillDateForPeriod(args: {
   period: PaymentPeriod;
   rentDueDay: number;
 }): Date {
-  const leaseStart = getEffectiveBillingStart(args.leaseStart);
-  const leasePeriod = { year: leaseStart.getFullYear(), month: leaseStart.getMonth() + 1 };
-
-  if (isSamePeriod(args.period, leasePeriod)) {
-    return leaseStart;
-  }
-
   const day = clampDayOfMonth(args.period.year, args.period.month, args.rentDueDay);
   return new Date(args.period.year, args.period.month - 1, day, 12, 0, 0, 0);
 }
@@ -141,12 +129,22 @@ export function getPaymentDueDate(args: {
   rentDueDay: number;
   paymentGracePeriodDays?: number | null;
 }): Date {
-  return addDays(
-    getBillDateForPeriod({
-      leaseStart: args.leaseStart,
-      period: args.period,
-      rentDueDay: args.rentDueDay,
-    }),
-    getPaymentGracePeriodDays(args.paymentGracePeriodDays),
-  );
+  const leaseStart = getEffectiveBillingStart(args.leaseStart);
+  const leasePeriod = { year: leaseStart.getFullYear(), month: leaseStart.getMonth() + 1 };
+  const legacyGraceDays = getPaymentGracePeriodDays(args.paymentGracePeriodDays);
+  const effectiveRentDueDay =
+    args.rentDueDay <= 1 && legacyGraceDays > 0
+      ? args.rentDueDay + legacyGraceDays - 1
+      : args.rentDueDay;
+  const configuredDueDate = getBillDateForPeriod({
+    leaseStart: args.leaseStart,
+    period: args.period,
+    rentDueDay: effectiveRentDueDay,
+  });
+
+  if (isSamePeriod(args.period, leasePeriod)) {
+    return configuredDueDate.getTime() < leaseStart.getTime() ? leaseStart : configuredDueDate;
+  }
+
+  return configuredDueDate;
 }

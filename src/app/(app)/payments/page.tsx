@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { TopBar } from "@/components/layout/TopBar";
 import { PaymentStatusBadge } from "@/components/shared/StatusBadge";
+import { ensureRentPaymentsForUser } from "@/lib/billing";
 import prisma from "@/lib/prisma";
 import { computePaymentStatus, formatCurrency, formatDate, formatMonthYear } from "@/lib/utils";
 import { requireUser } from "@/lib/currentUser";
@@ -54,6 +55,7 @@ export default async function PaymentsPage({
   const sp = await searchParams;
   const user = await requireUser();
   const now = new Date();
+  await ensureRentPaymentsForUser({ userId: user.id, now });
   const year = Number(sp.year) || now.getFullYear();
   const month = Number(sp.month) || (now.getMonth() + 1);
   const statusFilter = sp.status ?? "";

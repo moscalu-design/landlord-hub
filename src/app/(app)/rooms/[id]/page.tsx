@@ -12,6 +12,7 @@ import {
 } from "@/components/rooms/PaymentHistorySection";
 import { DeleteRoomForm } from "@/components/rooms/DeleteRoomForm";
 import { EndTenancyForm } from "@/components/rooms/EndTenancyForm";
+import { ensureRentPaymentsForUser } from "@/lib/billing";
 import { summarizeDepositTransactions } from "@/lib/depositUtils";
 import { computePaymentStatus } from "@/lib/utils";
 import { getDisplayRoomStatus } from "@/lib/roomOccupancy";
@@ -26,6 +27,7 @@ export default async function RoomDetailPage({
 }) {
   const { id } = await params;
   const user = await requireUser();
+  await ensureRentPaymentsForUser({ userId: user.id });
 
   const room = await prisma.room.findUnique({
     where: { id, userId: user.id },

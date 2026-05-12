@@ -11,6 +11,7 @@ import { RoomStatusBadge } from "@/components/shared/StatusBadge";
 import { getMonthlyCostForMonth } from "@/lib/mortgage";
 import { getExpenseTotalForMonth } from "@/lib/expenses";
 import { getDisplayRoomStatus, summarizeRooms } from "@/lib/roomOccupancy";
+import { ensureRentPaymentsForProperty } from "@/lib/billing";
 import prisma from "@/lib/prisma";
 import { computePaymentStatus, formatCurrency, formatDate, toDateInputValue } from "@/lib/utils";
 import { requireUser } from "@/lib/currentUser";
@@ -22,8 +23,8 @@ export default async function PropertyDetailPage({
 }) {
   const { id } = await params;
   const user = await requireUser();
-
   const now = new Date();
+  await ensureRentPaymentsForProperty({ userId: user.id, propertyId: id, now });
   const thisYear = now.getFullYear();
   const thisMonth = now.getMonth() + 1;
   const todayInputValue = toDateInputValue(now);

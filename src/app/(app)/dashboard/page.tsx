@@ -2,6 +2,7 @@ import Link from "next/link";
 import { TopBar } from "@/components/layout/TopBar";
 import { StatCard } from "@/components/shared/StatCard";
 import { PaymentStatusBadge } from "@/components/shared/StatusBadge";
+import { ensureRentPaymentsForUser } from "@/lib/billing";
 import { summarizeRooms } from "@/lib/roomOccupancy";
 import prisma from "@/lib/prisma";
 import { computePaymentStatus, formatCurrency, formatDate } from "@/lib/utils";
@@ -10,6 +11,7 @@ import { requireUser } from "@/lib/currentUser";
 async function getDashboardData() {
   const user = await requireUser();
   const now = new Date();
+  await ensureRentPaymentsForUser({ userId: user.id, now });
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
 

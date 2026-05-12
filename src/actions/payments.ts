@@ -59,6 +59,8 @@ export async function recordPayment(paymentId: string, formData: FormData) {
   });
 
   revalidatePath(`/rooms/${updated.occupancy.roomId}`);
+  revalidatePath(`/properties/${updated.occupancy.room.propertyId}`);
+  revalidatePath(`/properties/${updated.occupancy.room.propertyId}/payments`);
   revalidatePath(`/tenants/${updated.occupancy.tenantId}`);
   revalidatePath("/payments");
 }

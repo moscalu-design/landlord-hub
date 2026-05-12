@@ -45,7 +45,7 @@ export default async function SettingsPage() {
         <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6">
           <h2 className="text-sm font-semibold text-slate-800">Privacy</h2>
           <p className="mt-1 text-sm text-slate-600">
-            Your rental data is private to your account. Other users cannot access it unless you explicitly invite them or grant support access.
+            Your rental data is private to your account. Other signed-in users cannot access it.
           </p>
         </div>
 

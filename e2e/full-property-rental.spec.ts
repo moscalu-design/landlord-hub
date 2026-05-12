@@ -88,7 +88,36 @@ test("full-property rental uses whole-property tenancy and unified payments", as
       { timeout: 15_000 },
     );
     await expect(page.getByTestId("whole-property-tenant-card")).toContainText("€1,666");
+    await expect(page.getByTestId("whole-property-deposit-card")).toContainText("Deposit");
+    await expect(page.getByTestId("deposit-required-value")).toContainText("€1,666");
+    await page.getByTestId("whole-property-deposit-card").getByTestId("deposit-update-button").click();
+    await expect(page.getByTestId("deposit-update-modal")).toBeVisible();
+    await page.getByTestId("deposit-action-type").selectOption("RECEIVED");
+    await page.getByTestId("deposit-action-amount").fill("1666");
+    await page.getByTestId("deposit-action-description").fill("Whole-property deposit received");
+    await page.getByTestId("deposit-action-submit").click();
+    await expect(page.getByTestId("deposit-received-value")).toContainText("€1,666", {
+      timeout: 15_000,
+    });
     await assertAppHealthy(page, monitor, "whole-property tenancy assigned");
+
+    const inventorySection = page.getByTestId("whole-property-inventory-section");
+    await expect(inventorySection).toBeVisible();
+    await inventorySection.getByRole("button", { name: "+ Add item" }).click();
+    await inventorySection.locator('input[name="name"]').fill("Whole-property sofa");
+    await inventorySection.locator('input[name="quantity"]').fill("1");
+    await inventorySection.getByRole("button", { name: "Add item", exact: true }).click();
+    await expect(inventorySection.getByTestId("inventory-item-row")).toContainText(
+      "Whole-property sofa",
+      { timeout: 15_000 },
+    );
+
+    await inventorySection.getByRole("button", { name: "+ New inspection" }).click();
+    await expect(inventorySection.getByTestId("new-inspection-form")).toBeVisible();
+    await inventorySection.getByRole("button", { name: "Save inspection" }).click();
+    await expect(inventorySection.getByTestId("inspection-card")).toContainText("Check-in", {
+      timeout: 15_000,
+    });
 
     await page.goto(`/properties/${property.id}/payments`, { waitUntil: "networkidle" });
     await expect(page.getByTestId("property-payments-table")).toBeVisible();

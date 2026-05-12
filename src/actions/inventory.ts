@@ -15,6 +15,18 @@ async function requireAuth() {
   return requireUser();
 }
 
+async function revalidateInventorySurfaces(roomId: string, userId: string) {
+  revalidatePath(`/rooms/${roomId}/inventory`);
+  const room = await prisma.room.findFirst({
+    where: { id: roomId, userId },
+    select: { propertyId: true, isDefaultWholePropertyRoom: true },
+  });
+  if (room?.isDefaultWholePropertyRoom) {
+    revalidatePath(`/properties/${room.propertyId}`);
+    revalidatePath(`/properties/${room.propertyId}/payments`);
+  }
+}
+
 // ─── Room Inventory Items ──────────────────────────────────────────────────────
 
 export async function createInventoryItem(
@@ -47,7 +59,7 @@ export async function createInventoryItem(
     },
   });
 
-  revalidatePath(`/rooms/${roomId}/inventory`);
+  await revalidateInventorySurfaces(roomId, user.id);
   return { id: item.id };
 }
 
@@ -79,13 +91,13 @@ export async function updateInventoryItem(
     },
   });
 
-  revalidatePath(`/rooms/${roomId}/inventory`);
+  await revalidateInventorySurfaces(roomId, user.id);
 }
 
 export async function deleteInventoryItem(id: string, roomId: string): Promise<void> {
   const user = await requireAuth();
   await prisma.roomInventoryItem.delete({ where: { id, roomId, userId: user.id } });
-  revalidatePath(`/rooms/${roomId}/inventory`);
+  await revalidateInventorySurfaces(roomId, user.id);
 }
 
 // ─── Inventory Inspections ─────────────────────────────────────────────────────
@@ -167,7 +179,7 @@ export async function createInspection(
     },
   });
 
-  revalidatePath(`/rooms/${roomId}/inventory`);
+  await revalidateInventorySurfaces(roomId, user.id);
   return {
     id: inspection.id,
     items: inspection.items.map((i) => ({
@@ -200,5 +212,5 @@ export async function deleteInspection(
   }
 
   await prisma.inventoryInspection.delete({ where: { id, userId: user.id } });
-  revalidatePath(`/rooms/${roomId}/inventory`);
+  await revalidateInventorySurfaces(roomId, user.id);
 }

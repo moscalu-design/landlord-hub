@@ -7,13 +7,17 @@ import { PropertyMortgageSummary } from "@/components/properties/PropertyMortgag
 import { PropertyPerformanceChart } from "@/components/properties/PropertyPerformanceChart";
 import { PropertySubnav } from "@/components/properties/PropertySubnav";
 import { WholePropertyAssignTenant } from "@/components/properties/WholePropertyTenancySection";
+import { InventoryInspectionView } from "@/components/inventory/InventoryInspectionView";
+import { RoomInventoryManager } from "@/components/inventory/RoomInventoryManager";
+import { DepositManager } from "@/components/rooms/DepositManager";
 import { EndTenancyForm } from "@/components/rooms/EndTenancyForm";
 import { RecordPaymentForm } from "@/components/payments/RecordPaymentForm";
-import { PaymentStatusBadge } from "@/components/shared/StatusBadge";
+import { DepositStatusBadge, PaymentStatusBadge } from "@/components/shared/StatusBadge";
 import { buildChartData } from "@/components/properties/propertyPerformanceData";
 import { RoomStatusBadge } from "@/components/shared/StatusBadge";
 import { getMonthlyCostForMonth } from "@/lib/mortgage";
 import { getExpenseTotalForMonth } from "@/lib/expenses";
+import { summarizeDepositTransactions } from "@/lib/depositUtils";
 import { getDisplayRoomStatus, isVisibleRoom, summarizeRooms } from "@/lib/roomOccupancy";
 import { ensureRentPaymentsForProperty } from "@/lib/billing";
 import prisma from "@/lib/prisma";
@@ -87,9 +91,50 @@ export default async function PropertyDetailPage({
   if (!property) notFound();
 
   const isFullProperty = property.rentalMode === "FULL_PROPERTY";
+  const wholePropertyRoomDetails = isFullProperty
+    ? await prisma.room.findFirst({
+        where: {
+          propertyId: id,
+          userId: user.id,
+          isDefaultWholePropertyRoom: true,
+        },
+        include: {
+          inventoryItems: {
+            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          },
+          occupancies: {
+            where: { status: { in: ["ACTIVE", "ENDED"] } },
+            include: {
+              tenant: true,
+              deposit: {
+                include: {
+                  transactions: { orderBy: { date: "desc" } },
+                },
+              },
+              payments: {
+                orderBy: [{ periodYear: "desc" }, { periodMonth: "desc" }],
+                take: 24,
+              },
+              inspections: {
+                include: {
+                  photos: { orderBy: { uploadedAt: "asc" } },
+                  items: {
+                    include: { inventoryItem: true },
+                    orderBy: { createdAt: "asc" },
+                  },
+                },
+                orderBy: { date: "desc" },
+              },
+            },
+            orderBy: { createdAt: "desc" },
+          },
+        },
+      })
+    : null;
   const visibleRooms = property.rooms.filter(isVisibleRoom);
-  const wholePropertyRoom = property.rooms.find((r) => r.isDefaultWholePropertyRoom);
-  const wholePropertyOccupancy = wholePropertyRoom?.occupancies.find((o) => o.status === "ACTIVE");
+  const wholePropertyOccupancy = wholePropertyRoomDetails?.occupancies.find((o) => o.status === "ACTIVE");
+  const wholePropertyPastOccupancies =
+    wholePropertyRoomDetails?.occupancies.filter((o) => o.status !== "ACTIVE") ?? [];
 
   const { totalRooms, occupiedRooms, vacantRooms, monthlyIncome } = summarizeRooms(property.rooms);
   const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
@@ -223,7 +268,7 @@ export default async function PropertyDetailPage({
           <div data-testid="whole-property-tenancy-section" className="space-y-3">
             <h2 className="text-sm font-semibold text-slate-800">Whole Property Tenancy</h2>
             {wholePropertyOccupancy ? (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-4">
                 <div data-testid="whole-property-tenant-card" className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-slate-800">Current Tenant</h3>
@@ -335,6 +380,81 @@ export default async function PropertyDetailPage({
                     payments={wholePropertyOccupancy.payments}
                   />
                 </div>
+
+                <div data-testid="whole-property-deposit-card" className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-slate-800">Deposit</h3>
+                    {wholePropertyOccupancy.deposit && (
+                      <DepositStatusBadge status={wholePropertyOccupancy.deposit.status} size="sm" />
+                    )}
+                  </div>
+
+                  {wholePropertyOccupancy.deposit ? (
+                    <>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-500">Required</span>
+                          <span data-testid="deposit-required-value" className="font-semibold text-slate-700">
+                            {formatCurrency(wholePropertyOccupancy.deposit.required)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-500">Received</span>
+                          <span data-testid="deposit-received-value" className="font-semibold text-green-700">
+                            {formatCurrency(wholePropertyOccupancy.deposit.received)}
+                          </span>
+                        </div>
+                        {wholePropertyOccupancy.deposit.receivedAt && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-500">Date Received</span>
+                            <span className="text-slate-700">
+                              {formatDate(wholePropertyOccupancy.deposit.receivedAt)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {wholePropertyOccupancy.deposit.transactions.length > 0 && (
+                        <div className="pt-3 border-t border-slate-100">
+                          <p className="text-xs font-medium text-slate-600 mb-2">Transactions</p>
+                          <div className="space-y-1.5">
+                            {wholePropertyOccupancy.deposit.transactions.map((tx) => (
+                              <div key={tx.id} className="flex justify-between text-xs">
+                                <span className="text-slate-500">
+                                  {tx.type} · {formatDate(tx.date)}
+                                </span>
+                                <span
+                                  className={`font-medium ${
+                                    tx.type === "DEDUCTION"
+                                      ? "text-red-600"
+                                      : tx.type === "REFUND"
+                                      ? "text-orange-600"
+                                      : "text-green-600"
+                                  }`}
+                                >
+                                  {tx.type === "DEDUCTION" || tx.type === "REFUND" ? "-" : "+"}
+                                  {formatCurrency(tx.amount)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <DepositManager
+                        occupancyId={wholePropertyOccupancy.id}
+                        required={wholePropertyOccupancy.deposit.required}
+                        received={wholePropertyOccupancy.deposit.received}
+                        refunded={wholePropertyOccupancy.deposit.refunded}
+                        refundDueDate={wholePropertyOccupancy.deposit.refundDueDate}
+                        transactions={wholePropertyOccupancy.deposit.transactions}
+                        todayInputValue={todayInputValue}
+                      />
+                    </>
+                  ) : (
+                    <p className="text-sm text-slate-500">No deposit record</p>
+                  )}
+                </div>
               </div>
             ) : (
               <div
@@ -360,6 +480,86 @@ export default async function PropertyDetailPage({
                     />
                   )}
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {isFullProperty &&
+          wholePropertyPastOccupancies.some(
+            (o) => o.deposit && !o.deposit.refunded && o.deposit.refundDueDate,
+          ) && (
+            <div className="space-y-2">
+              {wholePropertyPastOccupancies
+                .filter((o) => o.deposit && !o.deposit.refunded && o.deposit.refundDueDate)
+                .map((o) => {
+                  const refundDue = new Date(o.deposit!.refundDueDate!);
+                  const isOverdue = refundDue < now;
+                  const summary = summarizeDepositTransactions(
+                    o.deposit!.required,
+                    o.deposit!.transactions,
+                  );
+
+                  return (
+                    <div
+                      key={o.id}
+                      data-testid="deposit-refund-warning"
+                      className={`flex items-start gap-3 rounded-xl px-4 py-3 border ${
+                        isOverdue ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200"
+                      }`}
+                    >
+                      <span className={`text-base mt-0.5 ${isOverdue ? "text-red-500" : "text-amber-500"}`}>
+                        !
+                      </span>
+                      <div>
+                        <p className={`text-sm font-medium ${isOverdue ? "text-red-700" : "text-amber-700"}`}>
+                          Deposit return {isOverdue ? "overdue" : "due soon"}
+                        </p>
+                        <p className={`text-xs mt-0.5 ${isOverdue ? "text-red-600" : "text-amber-600"}`}>
+                          {o.tenant.firstName} {o.tenant.lastName} moved out on{" "}
+                          {formatDate(o.moveOutDate)}. Deposit of{" "}
+                          {formatCurrency(summary.outstandingRefund || o.deposit!.required)} should be returned by{" "}
+                          {formatDate(refundDue)}.
+                        </p>
+
+                        <DepositManager
+                          occupancyId={o.id}
+                          required={o.deposit!.required}
+                          received={o.deposit!.received}
+                          refunded={o.deposit!.refunded}
+                          refundDueDate={o.deposit!.refundDueDate}
+                          transactions={o.deposit!.transactions}
+                          compact
+                          todayInputValue={todayInputValue}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+
+        {isFullProperty && wholePropertyRoomDetails && (
+          <div data-testid="whole-property-inventory-section" className="space-y-3">
+            <h2 className="text-sm font-semibold text-slate-800">Property Inventory & Inspections</h2>
+            <RoomInventoryManager
+              roomId={wholePropertyRoomDetails.id}
+              items={wholePropertyRoomDetails.inventoryItems}
+              activeOccupancyId={wholePropertyOccupancy?.id ?? null}
+            />
+
+            {wholePropertyRoomDetails.occupancies.length > 0 ? (
+              wholePropertyRoomDetails.occupancies.map((occupancy) => (
+                <InventoryInspectionView
+                  key={occupancy.id}
+                  roomId={wholePropertyRoomDetails.id}
+                  occupancy={occupancy}
+                  inventoryItems={wholePropertyRoomDetails.inventoryItems}
+                />
+              ))
+            ) : (
+              <div className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500">
+                Add a tenant before recording check-in or check-out inspections.
               </div>
             )}
           </div>

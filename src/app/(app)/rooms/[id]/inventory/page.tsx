@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { TopBar } from "@/components/layout/TopBar";
 import { RoomInventoryManager } from "@/components/inventory/RoomInventoryManager";
@@ -45,6 +45,9 @@ export default async function RoomInventoryPage({
   });
 
   if (!room) notFound();
+  if (room.isDefaultWholePropertyRoom) {
+    redirect(`/properties/${room.propertyId}`);
+  }
 
   const activeOccupancy = room.occupancies.find((o) => o.status === "ACTIVE");
 
